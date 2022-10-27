@@ -1,5 +1,5 @@
 ## imports
-import kwargs as kwargs
+#import kwargs as kwargs
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import numpy as np
@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from tensorflow.keras.applications import MobileNetV3Large
+import datetime
 
 
 ## CNN
@@ -16,9 +17,9 @@ model = tf.keras.applications.MobileNetV3Large(
     alpha=1.0,
     minimalistic=False,
     include_top=True,
-    weights="imagenet",
+    weights=None,
     input_tensor=None,
-    classes=1000,
+    classes=2,
     pooling=None,
     dropout_rate=0.2,
     classifier_activation="softmax",
@@ -29,7 +30,13 @@ model.summary()
 
 ##
 ds, info = tfds.load("imagenet_v2", as_supervised=True, with_info=True)
-ds1, info1 = tfds.load("beans", as_supervised=True, with_info=True)
+NUM_CLASSES = info.features["label"].num_classes
+#ds1, info1 = tfds.load("beans", as_supervised=True, with_info=True)
+## how to resize images
+size = (IMG_SIZE, IMG_SIZE)
+ds_train = ds_train.map(lambda image, label: (tf.image.resize(image, size), label))
+ds_test = ds_test.map(lambda image, label: (tf.image.resize(image, size), label))
+
 
 ##
 ds_train = ds["test"] # gibt nur testdaten im Set
@@ -92,24 +99,28 @@ def changeTensorShape(image, label):
 
 ##
 def getLabel(number):
+    pass
 
-
+##
 def importImages(directory):
     return tf.keras.utils.image_dataset_from_directory(
         directory,
         labels="inferred",
         label_mode="int",
-        class_names=None,
+        class_names=["Kein_Mensch", "Mensch"],
         color_mode="rgb",
         batch_size=32,
-        image_size=(256, 256),
+        image_size=(224, 224),
         shuffle=True,
         seed=None,
         validation_split=None,
         subset=None,
         interpolation="bilinear",
         follow_links=False,
-        crop_to_aspect_ratio=False)
+        crop_to_aspect_ratio=True)
+## load the imgaes
+
+ds = importImages("images")
 
 ##
 def loadImagePredict(path, model):
@@ -118,3 +129,14 @@ def loadImagePredict(path, model):
     input_arr = np.array([input_arr])  # Convert single image to a batch.
     predictions = model.predict(input_arr)
     return tf.keras.applications.mobilenet_v3.decode_predictions(predictions)
+
+
+## compile the model
+#TODO: from_logits ja oder nein?
+model.compile(optimizer='adam',
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+## train the model
+model.fit(ds,epochs=2,callbacks=[tensorboard_callback])
