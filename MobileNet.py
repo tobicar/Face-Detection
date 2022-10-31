@@ -4,11 +4,15 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
-import os
-from tensorflow.keras.applications import MobileNetV3Large
+#import pandas as pd
+#import os
+#from tensorflow.keras.applications import MobileNetV3Large
 import datetime
 
+
+
+#tf.debugging.set_log_device_placement(True)
+print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 ## CNN
 
@@ -139,4 +143,7 @@ model.compile(optimizer='adam',
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 ## train the model
-model.fit(ds,epochs=2,callbacks=[tensorboard_callback])
+tf.config.list_physical_devices('GPU')
+
+model.fit(ds,epochs=50,callbacks=[tensorboard_callback])
+model.save("saved_model/model_50epochs")
