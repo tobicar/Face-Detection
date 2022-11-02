@@ -1,19 +1,12 @@
 ## imports
-#import kwargs as kwargs
 import tensorflow as tf
-import tensorflow_datasets as tfds
 import numpy as np
 import matplotlib.pyplot as plt
-#import pandas as pd
-#import os
-#from tensorflow.keras.applications import MobileNetV3Large
 import datetime
 
-#tf.debugging.set_log_device_placement(True)
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
-## CNN
-
+## CNN MobileNet V3
 model = tf.keras.applications.MobileNetV3Large(
     input_shape=(None, None, 3), # default (224,224,3)
     alpha=1.0,
@@ -30,95 +23,71 @@ model = tf.keras.applications.MobileNetV3Large(
 ## CNN info
 model.summary()
 
-##
-#ds, info = tfds.load("imagenet_v2", as_supervised=True, with_info=True)
-#NUM_CLASSES = info.features["label"].num_classes
-#ds1, info1 = tfds.load("beans", as_supervised=True, with_info=True)
-## how to resize images
-#size = (IMG_SIZE, IMG_SIZE)
-#ds_train = ds_train.map(lambda image, label: (tf.image.resize(image, size), label))
-#ds_test = ds_test.map(lambda image, label: (tf.image.resize(image, size), label))
+## show image
+def printOriginalImage(path, text):
+    """ show image
+    :param path: path to image file
+    :return: -
+    """
+    image = tf.keras.preprocessing.image.load_img(path)
+    figure, ax = plt.subplots()
+    ax.imshow(image)
 
-##
-#ds_train = ds["test"] # gibt nur testdaten im Set
-#assert isinstance(ds_train, tf.data.Dataset)
-#df = tfds.as_dataframe(ds_train.take(10), info)
+    # hide y-axis
+    ax.get_yaxis().set_visible(False)
 
-## show examples
-#fig = tfds.show_examples(ds_train.take(10),info)
+    ax.set_xticklabels([])
 
-##
-#plt.figure(figsize=(10, 10))
-#for images, labels in ds_train.take(10):
-#    for i in range(9):
-#        ax = plt.subplot(3, 3, i + 1)
-#        plt.imshow(images.numpy().astype("uint8"))
-#        plt.axis("off")
-
-## print single picture
-#ToDo: print saved picture
-#for images
-#plt.imshow(ds_train.get_single_element(10))
-
-## Dictionary
-#for example in ds1.take(1):  # example is `{'image': tf.Tensor, 'label': tf.Tensor}`
-#    print(list(example.keys()))
-#    image = example["image"]
-#    label = example["label"]
-#    print(image.shape, label)
-
-## Tuple
-def printOriginalImage(path):
-    image = tf.keras.preprocessing.image.load_img(path) #, target_size=(224, 224))
-    plt.imshow(image)
+    ax.set_xlabel(text, loc='left')
 
 def getImageFromDataset(dataset):
+    """ extract image from dataset
+    :param dataset: defined dataset
+    :return: image (as array)
+    """
     for example in dataset.take(1): #TODO: ersetzen durch direkten Zugriff auf ein Element
         #image = example[0]
         #label = example[1]
         #print(image.shape, label)
         return example[0]
 
-## Prediction
-#def predictImage(model, image):
-#    """
-#    :param model: vortrainiertes Model
-#    :param image: EagerTensor mit Dimension (x, y, 3)
-#    :return: Tupel mit Wahrscheinlichkeit und Klasse
-#    """
-#    image_reshaped = tf.expand_dims(image, axis=0)
-#    prediction = model.predict(image_reshaped)
-#    return np.max(prediction), np.argmax(prediction)
-
-#prediction, prediction_class = predictImage(model, getPicture(ds_train))
-
-##
-#def changeTensorShape(image, label):
-#    return tf.expand_dims(image, axis=0), label
-
-
 ## cut decimals
 def trunc(values, decs=2):
+    """ cuts decimal numbers
+    :param values: number (float)
+    :param decs: decimals to cut
+    :return: number
+    """
     return np.trunc(values*10**decs)/(10**decs)
 
 ## config output
-def getLabel(prediction_array):
-    label = np.argmax(prediction_array)
-    match label:
-        case 0:
-            return "Kein Mensch: " + trunc(prediction_array[0], 3)
-        case 1:
-            return "Mensch: " + trunc(prediction_array[1], 3)
+labels = ["Kein Mensch", "Mensch"]
+def getPredictionText(prediction_array):
+    """ get label to prediction
+    :param prediction_array: array of prediction
+    :return: string with max prediction and label
+    """
+    sort_array = np.argsort(prediction_array)[::-1]
+    print(sort_array)
+    print(prediction_array)
+    text = ""
+    for e in sort_array:
+        text += labels[e] + ": " + str(trunc(prediction_array[e], 4)) + "\n"
+    return text
 
-##
+## import images from directory
 def importImages(directory):
+    """ import images from directory
+    :param directory: path to image folder
+    :return: -
+    """
     return tf.keras.utils.image_dataset_from_directory(
         directory,
         labels="inferred",
         label_mode="int",
         class_names=["Kein_Mensch", "Mensch"],
         color_mode="rgb",
-        batch_size=32,
+        batch_size=1,
         image_size=(224, 224),
         shuffle=True,
         seed=None,
@@ -128,7 +97,6 @@ def importImages(directory):
         follow_links=False,
         crop_to_aspect_ratio=True)
 
-## load the images
 ds = importImages("images")
 
 ## get prediction
@@ -137,23 +105,66 @@ def loadImagePredict(path, model):
     input_arr = tf.keras.preprocessing.image.img_to_array(image)
     input_arr = np.array([input_arr])  # Convert single image to a batch.
     predictions = model.predict(input_arr)
-    printOriginalImage(path) #TODO: add prediction to plt
-    return getLabel(predictions)
-    #return tf.keras.applications.mobilenet_v3.decode_predictions(predictions)
-
+    text = getPredictionText(predictions[0])
+    printOriginalImage(path, text)
+    return getPredictionText(predictions[0])
 
 ## compile the model
-#TODO: from_logits ja oder nein?
 model.compile(optimizer='adam',
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
               metrics=['accuracy'])
 log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-## train the model
-tf.config.list_physical_devices('GPU')
 
-model.fit(ds,epochs=50,callbacks=[tensorboard_callback])
-#model.save("saved_model/model_50epochs")
+## split dataset
+
+ds_size = len(ds.file_paths)
+train_size = int(0.7 * ds_size)
+val_size = int(0.15 * ds_size)
+test_size = int(0.15 * ds_size)
+
+ds_train = ds.take(train_size)
+ds_test = ds.skip(train_size)
+ds_val = ds_test.skip(val_size)
+ds_test = ds_test.take(test_size)
+
+## train the model
+tf.debugging.set_log_device_placement(True)
+
+model.fit(ds_train, batch_size=32, epochs=50, callbacks=[tensorboard_callback],
+          validation_data=ds_val, validation_batch_size=32)
+model.save("saved_model/model_50epochs")
 
 ## load model
 model = tf.keras.models.load_model('saved_model/model_50epochs')
+
+## OpenFileDialog
+
+import tkinter as tk
+from tkinter import filedialog
+
+root = tk.Tk()
+root.withdraw()
+
+filetypes =[('image files', '.png .jpg .jpeg .jfif')]
+file_path = filedialog.askopenfilename(parent=root, filetypes=filetypes)
+
+if file_path:
+    loadImagePredict(file_path, model)
+
+##
+
+ds_size = len(ds.file_paths)
+train_size = int(0.7 * ds_size)
+val_size = int(0.15 * ds_size)
+test_size = int(0.15 * ds_size)
+
+full_dataset = ds
+#full_dataset = full_dataset.shuffle()
+train_dataset = full_dataset.take(train_size)
+test_dataset = full_dataset.skip(train_size)
+val_dataset = test_dataset.skip(val_size)
+test_dataset = test_dataset.take(test_size)
+
+##
+model.evaluate(test_dataset)
