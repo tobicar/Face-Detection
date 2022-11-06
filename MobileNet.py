@@ -19,6 +19,35 @@ model = tf.keras.applications.MobileNetV3Large(
     dropout_rate=0.2,
     classifier_activation="softmax",
     include_preprocessing=True,)
+##
+def load_model(version, classes,dropout=0.2,pre_trained=False):
+    """
+    :param version: v3Large oder v3Small kann geladen werden
+    :param classes: Anzahl der Klassen wenn die Gewichte nicht vortrainiert geladen werden
+    :param dropout: Dropout Rate im letzten Dense Layer (default: 20%)
+    :param preTrained: Laden der vortrainierten Gewichte des ImageNets oder randomisiert initialisierte Gewichte
+    :return: Instanz des Keras Models
+    """
+    version = version.lower()
+    if version == "v3large":
+        return tf.keras.applications.MobileNetV3Large(
+            input_shape=(None, None, 3),  # default (224,224,3)
+            include_top= not pre_trained, # if preTrained no Top
+            weights='imageNet' if pre_trained else None,
+            classes=1000 if pre_trained else classes,
+            dropout_rate=dropout,
+            classifier_activation="softmax",
+            include_preprocessing=True)
+    elif version == "v3small":
+        return tf.keras.applications.MobileNetV3Small(
+            input_shape=(None, None, 3),
+            include_top=not pre_trained,
+            weights='imageNet' if pre_trained else None,
+            classes=1000 if pre_trained else classes,
+            dropout_rate=dropout,
+            classifier_activation='softmax',
+            include_preprocessing=True
+        )
 
 ## CNN info
 model.summary()
