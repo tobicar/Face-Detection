@@ -6,21 +6,8 @@ import datetime
 
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
-## CNN MobileNet V3
-model = tf.keras.applications.MobileNetV3Large(
-    input_shape=(None, None, 3), # default (224,224,3)
-    alpha=1.0,
-    minimalistic=False,
-    include_top=True,
-    weights=None,
-    input_tensor=None,
-    classes=2,
-    pooling=None,
-    dropout_rate=0.2,
-    classifier_activation="softmax",
-    include_preprocessing=True,)
 ##
-def load_model(version, classes,dropout=0.2,pre_trained=False):
+def load_model_for_training(version, classes,dropout=0.2,pre_trained=False):
     """
     :param version: v3Large oder v3Small kann geladen werden
     :param classes: Anzahl der Klassen wenn die Gewichte nicht vortrainiert geladen werden
@@ -31,54 +18,23 @@ def load_model(version, classes,dropout=0.2,pre_trained=False):
     version = version.lower()
     if version == "v3large":
         return tf.keras.applications.MobileNetV3Large(
-            input_shape=(None, None, 3),  # default (224,224,3)
+            input_shape=(224, 224, 3),  # default (224,224,3)
             include_top= not pre_trained, # if preTrained no Top
-            weights='imageNet' if pre_trained else None,
+            weights='imagenet' if pre_trained else None,
             classes=1000 if pre_trained else classes,
             dropout_rate=dropout,
             classifier_activation="softmax",
             include_preprocessing=True)
     elif version == "v3small":
         return tf.keras.applications.MobileNetV3Small(
-            input_shape=(None, None, 3),
+            input_shape=(224, 224, 3),
             include_top=not pre_trained,
-            weights='imageNet' if pre_trained else None,
+            weights='imagenet' if pre_trained else None,
             classes=1000 if pre_trained else classes,
             dropout_rate=dropout,
             classifier_activation='softmax',
             include_preprocessing=True
         )
-
-## CNN info
-model.summary()
-
-## show image
-def printOriginalImage(path, text):
-    """ show image
-    :param path: path to image file
-    :return: -
-    """
-    image = tf.keras.preprocessing.image.load_img(path)
-    figure, ax = plt.subplots()
-    ax.imshow(image)
-
-    # hide y-axis
-    ax.get_yaxis().set_visible(False)
-
-    ax.set_xticklabels([])
-
-    ax.set_xlabel(text, loc='left')
-
-def getImageFromDataset(dataset):
-    """ extract image from dataset
-    :param dataset: defined dataset
-    :return: image (as array)
-    """
-    for example in dataset.take(1): #TODO: ersetzen durch direkten Zugriff auf ein Element
-        #image = example[0]
-        #label = example[1]
-        #print(image.shape, label)
-        return example[0]
 
 ## cut decimals
 def trunc(values, decs=2):
@@ -90,12 +46,13 @@ def trunc(values, decs=2):
     return np.trunc(values*10**decs)/(10**decs)
 
 ## config output
-labels = ["Kein Mensch", "Mensch"]
-def getPredictionText(prediction_array):
-    """ get label to prediction
+#TODO: Falls Training mit binaryCrossEntropy -> anderes prediction array
+def get_prediction_text(prediction_array):
+    """ get label to a specific prediction
     :param prediction_array: array of prediction
     :return: string with max prediction and label
     """
+    labels = ["no face", "face"]
     sort_array = np.argsort(prediction_array)[::-1]
     print(sort_array)
     print(prediction_array)
@@ -105,95 +62,87 @@ def getPredictionText(prediction_array):
     return text
 
 ## import images from directory
-def importImages(directory):
-    """ import images from directory
-    :param directory: path to image folder
-    :return: -
+def import_train_images(directory,seed=1, batch_size=32):
+    """
+    load training dataset from directory
+    :param directory: path of directory
+    :param seed: seed to generate random shuffle for val split
+    :param batch_size: Size of the batches of data
+    :return: tuple with training and validation tf.data.Dataset
     """
     return tf.keras.utils.image_dataset_from_directory(
         directory,
         labels="inferred",
-        label_mode="int",
-        class_names=["Kein_Mensch", "Mensch"],
-        color_mode="rgb",
-        batch_size=1,
+        label_mode="binary", #oder mode binary
+        class_names=["no_face", "face"], #umbenannt
+        batch_size=batch_size,
         image_size=(224, 224),
         shuffle=True,
-        seed=None,
-        validation_split=None,
-        subset=None,
-        interpolation="bilinear",
-        follow_links=False,
+        seed=seed,
+        validation_split=0.8235,
+        subset="both",
         crop_to_aspect_ratio=True)
 
-ds = importImages("images")
+##
+def import_test_images(directory,batch_size=32):
+    """
+    import test images from test directory
+    :param directory: path to the directory
+    :param batch_size: Size of the batches of Data
+    :return: tf.data.Dataset with test images and labels
+    """
+    return tf.keras.utils.image_dataset_from_directory(
+        directory,
+        label_mode="binary",
+        class_names=["no_face", "face"],
+        batch_size=batch_size,
+        image_size=(224,224),
+        shuffle=True,
+        crop_to_aspect_ratio=True)
 
-## get prediction
-def loadImagePredict(path, model):
+## show image
+def print_original_image(path, text=""):
+    """ show image with original size
+    :param path: path to image file
+    :return: -
+    """
+    image = tf.keras.preprocessing.image.load_img(path)
+    figure, ax = plt.subplots()
+    ax.imshow(image)
+    # hide y-axis
+    ax.get_yaxis().set_visible(False)
+    ax.set_xticklabels([])
+    ax.set_xlabel(text, loc='left')
+
+##
+def predict_image(path, model,show_image=True):
+    """
+    predict single image and calculate probability if a face is in the picture or not
+    :param path: path to image
+    :param model: trained model
+    :param show_image: shows image with prediction probability in additional window
+    :return: text with prediction probability
+    """
     image = tf.keras.preprocessing.image.load_img(path, target_size=(224,224))
     input_arr = tf.keras.preprocessing.image.img_to_array(image)
-    input_arr = np.array([input_arr])  # Convert single image to a batch.
+    input_arr = np.array([input_arr])  # Convert image to single batch.
     predictions = model.predict(input_arr)
-    text = getPredictionText(predictions[0])
-    printOriginalImage(path, text)
-    return getPredictionText(predictions[0])
-
-## compile the model
-model.compile(optimizer='adam',
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
-              metrics=['accuracy'])
-log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-
-## split dataset
-
-ds_size = len(ds.file_paths)
-train_size = int(0.7 * ds_size)
-val_size = int(0.15 * ds_size)
-test_size = int(0.15 * ds_size)
-
-ds_train = ds.take(train_size)
-ds_test = ds.skip(train_size)
-ds_val = ds_test.skip(val_size)
-ds_test = ds_test.take(test_size)
-
-## train the model
-tf.debugging.set_log_device_placement(True)
-
-model.fit(ds_train, batch_size=32, epochs=50, callbacks=[tensorboard_callback],
-          validation_data=ds_val, validation_batch_size=32)
-model.save("saved_model/model_50epochs")
-
-## load model
-model = tf.keras.models.load_model('saved_model/model_50epochs')
-
-## OpenFileDialog
-
-import tkinter as tk
-from tkinter import filedialog
-
-root = tk.Tk()
-root.withdraw()
-
-filetypes =[('image files', '.png .jpg .jpeg .jfif')]
-file_path = filedialog.askopenfilename(parent=root, filetypes=filetypes)
-
-if file_path:
-    loadImagePredict(file_path, model)
+    text = get_prediction_text(predictions[0])
+    if show_image:
+        print_original_image(path, text)
+    return text
 
 ##
+#ds_size = len(ds.file_paths)
+#train_size = int(0.7 * ds_size)
+#val_size = int(0.15 * ds_size)
+#test_size = int(0.15 * ds_size)
 
-ds_size = len(ds.file_paths)
-train_size = int(0.7 * ds_size)
-val_size = int(0.15 * ds_size)
-test_size = int(0.15 * ds_size)
-
-full_dataset = ds
+#full_dataset = ds
 #full_dataset = full_dataset.shuffle()
-train_dataset = full_dataset.take(train_size)
-test_dataset = full_dataset.skip(train_size)
-val_dataset = test_dataset.skip(val_size)
-test_dataset = test_dataset.take(test_size)
+#train_dataset = full_dataset.take(train_size)
+#test_dataset = full_dataset.skip(train_size)
+#val_dataset = test_dataset.skip(val_size)
+#test_dataset = test_dataset.take(test_size)
 
-##
-model.evaluate(test_dataset)
+
