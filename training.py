@@ -10,7 +10,7 @@ print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 BATCH_SIZE = 32 #TODO: Hier varieren mit 32, 64, 128, 256
 
 ## load train and validation data
-(train_ds, val_ds) = MobileNet.import_train_images()
+(train_ds, val_ds) = MobileNet.import_train_images("images/train")
 
 ## load net architecture
 model_scratch = MobileNet.load_model_for_training("v3Large",1)
