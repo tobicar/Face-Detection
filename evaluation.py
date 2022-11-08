@@ -6,10 +6,10 @@ import datetime
 import MobileNet
 
 ## load model
-PATH_TO_MODEL = "saved_model/model_50epochs"
+PATH_TO_MODEL = "saved_model/model_transfer_10epochs_32batch"
 model = tf.keras.models.load_model(PATH_TO_MODEL)
 ## load test Dataset
-test_ds = MobileNet.import_test_images("dir")
+test_ds = MobileNet.import_test_images("images/test")
 
 ## evaluierung des Models
 #TODO: Implementierung und model.evaluate anschauen
@@ -30,4 +30,4 @@ filetypes =[('image files', '.png .jpg .jpeg .jfif')]
 file_path = filedialog.askopenfilename(parent=root, filetypes=filetypes)
 
 if file_path:
-    loadImagePredict(file_path, model)
+    MobileNet.predict_image(file_path, model)

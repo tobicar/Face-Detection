@@ -6,13 +6,13 @@ import datetime
 
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
-##
-def load_model_for_training(version, classes,dropout=0.2,pre_trained=False):
+
+def load_model_for_training(version, classes, dropout=0.2, pre_trained=False):
     """
     :param version: v3Large oder v3Small kann geladen werden
     :param classes: Anzahl der Klassen wenn die Gewichte nicht vortrainiert geladen werden
     :param dropout: Dropout Rate im letzten Dense Layer (default: 20%)
-    :param preTrained: Laden der vortrainierten Gewichte des ImageNets oder randomisiert initialisierte Gewichte
+    :param pre_trained: Laden der vortrainierten Gewichte des ImageNets oder randomisiert initialisierte Gewichte
     :return: Instanz des Keras Models
     """
     version = version.lower()
@@ -23,7 +23,7 @@ def load_model_for_training(version, classes,dropout=0.2,pre_trained=False):
             weights='imagenet' if pre_trained else None,
             classes=1000 if pre_trained else classes,
             dropout_rate=dropout,
-            classifier_activation="softmax",
+            classifier_activation="sigmoid", #TODO: auf softmax ??
             include_preprocessing=True)
     elif version == "v3small":
         return tf.keras.applications.MobileNetV3Small(
@@ -36,7 +36,7 @@ def load_model_for_training(version, classes,dropout=0.2,pre_trained=False):
             include_preprocessing=True
         )
 
-## cut decimals
+
 def trunc(values, decs=2):
     """ cuts decimal numbers
     :param values: number (float)
@@ -45,7 +45,7 @@ def trunc(values, decs=2):
     """
     return np.trunc(values*10**decs)/(10**decs)
 
-## config output
+
 #TODO: Falls Training mit binaryCrossEntropy -> anderes prediction array
 def get_prediction_text(prediction_array):
     """ get label to a specific prediction
@@ -61,8 +61,8 @@ def get_prediction_text(prediction_array):
         text += labels[e] + ": " + str(trunc(prediction_array[e], 4)) + "\n"
     return text
 
-## import images from directory
-def import_train_images(directory,seed=1, batch_size=32):
+
+def import_train_images(directory, seed=1, batch_size=32):
     """
     load training dataset from directory
     :param directory: path of directory
@@ -79,11 +79,11 @@ def import_train_images(directory,seed=1, batch_size=32):
         image_size=(224, 224),
         shuffle=True,
         seed=seed,
-        validation_split=0.8235,
+        validation_split=0.1765,
         subset="both",
         crop_to_aspect_ratio=True)
 
-##
+
 def import_test_images(directory,batch_size=32):
     """
     import test images from test directory
@@ -100,7 +100,7 @@ def import_test_images(directory,batch_size=32):
         shuffle=True,
         crop_to_aspect_ratio=True)
 
-## show image
+
 def print_original_image(path, text=""):
     """ show image with original size
     :param path: path to image file
@@ -114,7 +114,7 @@ def print_original_image(path, text=""):
     ax.set_xticklabels([])
     ax.set_xlabel(text, loc='left')
 
-##
+
 def predict_image(path, model,show_image=True):
     """
     predict single image and calculate probability if a face is in the picture or not
@@ -132,17 +132,34 @@ def predict_image(path, model,show_image=True):
         print_original_image(path, text)
     return text
 
-##
-#ds_size = len(ds.file_paths)
-#train_size = int(0.7 * ds_size)
-#val_size = int(0.15 * ds_size)
-#test_size = int(0.15 * ds_size)
 
-#full_dataset = ds
-#full_dataset = full_dataset.shuffle()
-#train_dataset = full_dataset.take(train_size)
-#test_dataset = full_dataset.skip(train_size)
-#val_dataset = test_dataset.skip(val_size)
-#test_dataset = test_dataset.take(test_size)
+def train_model(model, epochs, train_ds, val_ds, save_file_name):
+    """
+
+    :param model:
+    :param epochs:
+    :param train_ds:
+    :param val_ds:
+    :param save_file_name:
+    :return:
+    """
+    # compile Model
+    model.compile(optimizer='adam',
+                          loss=tf.keras.losses.BinaryCrossentropy(),
+                          metrics=['accuracy']) #from_logits=("transfer" in save_file_name)),
+
+    log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+    model.summary()
+
+    # train the model
+    tf.debugging.set_log_device_placement(True)
+    history = model.fit(train_ds,
+                                epochs=epochs,
+                                validation_data=val_ds, callbacks=[tensorboard_callback], )
+    # save model
+    model.save("saved_model/" + save_file_name)
+    return history
+
 
 
