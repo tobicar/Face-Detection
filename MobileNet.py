@@ -162,4 +162,36 @@ def train_model(model, epochs, train_ds, val_ds, save_file_name):
     return history
 
 
+def generate_history_and_save(history,name):
+    """
+    generates figure with training and validation accuracy and loss and saves it to file
+    :param history: the history of the trained model
+    :param name: filename of the saved figure
+    :return: -
+    """
+    # parts from https://www.tensorflow.org/tutorials/images/transfer_learning
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+    plt.figure(figsize=(8, 8))
+    plt.subplot(2, 1, 1)
+    plt.plot(acc, label='Training Accuracy')
+    plt.plot(val_acc, label='Validation Accuracy')
+    plt.legend(loc='lower right')
+    plt.ylabel('Accuracy')
+    plt.ylim([min(plt.ylim()), 1])
+    plt.title('Training and Validation Accuracy')
+
+    plt.subplot(2, 1, 2)
+    plt.plot(loss, label='Training Loss')
+    plt.plot(val_loss, label='Validation Loss')
+    plt.legend(loc='upper right')
+    plt.ylabel('Cross Entropy')
+    plt.ylim([0, 1.0])
+    plt.title('Training and Validation Loss')
+    plt.xlabel('epoch')
+    plt.savefig("plots/" + name)
+
+
 
