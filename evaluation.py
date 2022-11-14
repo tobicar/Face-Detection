@@ -22,7 +22,7 @@ for model_path in os.listdir(directory):
     data.append(row)
 ## save data to pandas Dataframe and to file
 df = pd.DataFrame(data)
-time = datetime.now().strftime("%m:%d:%Y:%H:%M:%S")
+time = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
 df.to_csv("evaluation/" + str(time) + ".csv")
 
 
