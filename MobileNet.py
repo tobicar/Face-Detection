@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import datetime
 
-print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+#print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 
 def load_model_for_training(version, classes, dropout=0.2, pre_trained=False):
@@ -19,7 +19,7 @@ def load_model_for_training(version, classes, dropout=0.2, pre_trained=False):
     if version == "v3large":
         return tf.keras.applications.MobileNetV3Large(
             input_shape=(224, 224, 3),  # default (224,224,3)
-            include_top= not pre_trained, # if preTrained no Top
+            include_top=  not pre_trained, # if preTrained no Top
             weights='imagenet' if pre_trained else None,
             classes=1000 if pre_trained else classes,
             dropout_rate=dropout,
@@ -62,7 +62,7 @@ def get_prediction_text(prediction_array):
     return text
 
 
-def import_train_images(directory, seed=1, batch_size=32):
+def import_train_images(directory, seed=123, batch_size=32):
     """
     load training dataset from directory
     :param directory: path of directory
@@ -84,7 +84,7 @@ def import_train_images(directory, seed=1, batch_size=32):
         crop_to_aspect_ratio=True)
 
 
-def import_test_images(directory,batch_size=32):
+def import_test_images(directory, batch_size=32):
     """
     import test images from test directory
     :param directory: path to the directory
@@ -115,7 +115,7 @@ def print_original_image(path, text=""):
     ax.set_xlabel(text, loc='left')
 
 
-def predict_image(path, model,show_image=True):
+def predict_image(path, model, show_image=True):
     """
     predict single image and calculate probability if a face is in the picture or not
     :param path: path to image
