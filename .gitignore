@@ -81,3 +81,4 @@ fabric.properties
 images/
 part2/
 part3/
+/saved_model/model_resnet5010epochs_32batch/
