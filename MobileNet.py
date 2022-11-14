@@ -73,8 +73,8 @@ def import_train_images(directory, seed=123, batch_size=32):
     return tf.keras.utils.image_dataset_from_directory(
         directory,
         labels="inferred",
-        label_mode="binary", #oder mode binary
-        class_names=["no_face", "face"], #umbenannt
+        label_mode="binary",
+        class_names=["no_face", "face"],
         batch_size=batch_size,
         image_size=(224, 224),
         shuffle=True,
@@ -116,6 +116,7 @@ def print_original_image(path, text=""):
 
 
 def predict_image(path, model, show_image=True):
+    #TODO: funktioniert noch nicht mit binarycross entropy
     """
     predict single image and calculate probability if a face is in the picture or not
     :param path: path to image
@@ -134,6 +135,7 @@ def predict_image(path, model, show_image=True):
 
 
 def train_model(model, epochs, train_ds, val_ds, save_file_name):
+    #TODO: ergänzung der kommentierung
     """
 
     :param model:
