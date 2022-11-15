@@ -25,6 +25,14 @@ def load_model_for_training(version, classes, dropout=0.2, pre_trained=False):
             dropout_rate=dropout,
             classifier_activation="sigmoid", #TODO: auf softmax ??
             include_preprocessing=True)
+    elif version == "v1":
+        return tf.keras.applications.MobileNet(
+            input_shape=(224,224,3),
+            include_top= not pre_trained,
+            weights= "imagenet" if pre_trained else None,
+            classes = 1000 if pre_trained else classes,
+            dropout=dropout,
+            classifier_activation="sigmoid")
     elif version == "v3small":
         return tf.keras.applications.MobileNetV3Small(
             input_shape=(224, 224, 3),
@@ -46,19 +54,16 @@ def trunc(values, decs=2):
     return np.trunc(values*10**decs)/(10**decs)
 
 
-#TODO: Falls Training mit binaryCrossEntropy -> anderes prediction array
 def get_prediction_text(prediction_array):
     """ get label to a specific prediction
     :param prediction_array: array of prediction
-    :return: string with max prediction and label
+    :return: string with prediction text
     """
-    labels = ["no face", "face"]
-    sort_array = np.argsort(prediction_array)[::-1]
-    print(sort_array)
-    print(prediction_array)
-    text = ""
-    for e in sort_array:
-        text += labels[e] + ": " + str(trunc(prediction_array[e], 4)) + "\n"
+    face = prediction_array.flatten()[0]
+    if face > 0.5:
+        text = "face with a propability of: " + str(trunc(face,4)) + "\n"
+    else:
+        text = "no face with a probability of: " + str(trunc(1-face,4)) + "\n"
     return text
 
 
@@ -135,15 +140,15 @@ def predict_image(path, model, show_image=True):
 
 
 def train_model(model, epochs, train_ds, val_ds, save_file_name):
-    #TODO: ergänzung der kommentierung
     """
-
-    :param model:
-    :param epochs:
-    :param train_ds:
-    :param val_ds:
-    :param save_file_name:
-    :return:
+    Method compile a model with the binary cross entropy as loss function for binary classfication problems.
+    As metric accuracy is used.
+    :param model: model to train
+    :param epochs: number of epochs to train
+    :param train_ds: dataset used for training the model
+    :param val_ds: dataset used for calculating validation values
+    :param save_file_name: filename of the saved model
+    :return: the training history
     """
     # compile Model
     model.compile(optimizer='adam',

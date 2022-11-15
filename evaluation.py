@@ -17,7 +17,7 @@ for model_path in os.listdir(directory):
         continue
     model = tf.keras.models.load_model(directory + "/" +model_path)
     evaluation = model.evaluate(test_ds)
-    row = {"name": model_path, "loss": evaluation[0], "acc": evaluation[1]}
+    row = {"name": model_path, "loss": evaluation[0], "acc": evaluation[1],"epochs": model_path.split("_")[2].split("e")[0],"batch": model_path.split("_")[3].split("b")[0]}
     data.append(row)
 ## save data to pandas Dataframe and to file
 df = pd.DataFrame(data)
