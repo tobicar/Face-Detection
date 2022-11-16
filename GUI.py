@@ -1,4 +1,4 @@
-#TODO: File tut noch gar nichts...
+# TODO: File tut noch gar nichts...
 
 import tkinter as tk
 from tkinter import ttk
@@ -42,7 +42,8 @@ open_button.pack(expand=True)
 # run the application
 root.mainloop()
 
-## load image from url
+##
+# load image from url
 from urllib.request import urlopen
 from PIL import Image
 
