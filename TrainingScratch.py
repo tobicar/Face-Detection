@@ -32,7 +32,7 @@ for batch in BATCH_SIZES:
             train_ds = train_ds.prefetch(buffer_size=AUTOTUNE)
             val_ds = val_ds.prefetch(buffer_size=AUTOTUNE)
             # load net architecture
-            model_scratch = MobileNet.load_model_for_training("v1", 1)
+            model_scratch = MobileNet.load_model_for_training("v1", 1, input_size=input_size)
             # load,train and save model
             name = "modelv1_scratch_" + str(epoch) + "epochs_" + str(batch) + "batch_" + str(alpha).split(".")[0] +\
                    str(alpha).split(".")[1] + "alpha_" + str(input_size) + "inputSize"
