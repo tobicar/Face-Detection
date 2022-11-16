@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 import datetime
 
 
-def load_model_for_training(version, classes, dropout=0.2, pre_trained=False, alpha=1, depth_multiplier=1, input_size=224):
+def load_model_for_training(version, classes, input_size=224, dropout=0.2, pre_trained=False, alpha=1, depth_multiplier=1):
     """
+    :param input_size:
     :param depth_multiplier: depth multiplier of v1
     :param alpha: alpha of v1
     :param version: v3Large, v3Small or v1 can be loaded
@@ -17,7 +18,7 @@ def load_model_for_training(version, classes, dropout=0.2, pre_trained=False, al
     version = version.lower()
     if version == "v3large":
         return tf.keras.applications.MobileNetV3Large(
-            input_shape=(224, 224, 3),  # default (224,224,3)
+            input_shape=(input_size, input_size, 3),  # default (224,224,3)
             include_top=not pre_trained,  # if preTrained no Top
             weights='imagenet' if pre_trained else None,
             classes=1000 if pre_trained else classes,
@@ -36,7 +37,7 @@ def load_model_for_training(version, classes, dropout=0.2, pre_trained=False, al
             depth_multiplier=depth_multiplier)
     elif version == "v3small":
         return tf.keras.applications.MobileNetV3Small(
-            input_shape=(224, 224, 3),
+            input_shape=(input_size, input_size, 3),
             include_top=not pre_trained,
             weights='imagenet' if pre_trained else None,
             classes=1000 if pre_trained else classes,
@@ -68,7 +69,7 @@ def get_prediction_text(prediction_array):
     return text
 
 
-def import_train_images(directory, seed=123, batch_size=32):
+def import_train_images(directory, seed=123, batch_size=32, imagesize=224):
     """
     load training dataset from directory
     :param directory: path of directory
@@ -82,7 +83,7 @@ def import_train_images(directory, seed=123, batch_size=32):
         label_mode="binary",
         class_names=["no_face", "face"],
         batch_size=batch_size,
-        image_size=(224, 224),
+        image_size=(imagesize, imagesize),
         shuffle=True,
         seed=seed,
         validation_split=0.1765,
