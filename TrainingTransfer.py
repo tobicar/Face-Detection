@@ -3,11 +3,10 @@ import tensorflow as tf
 import MobileNet
 
 # train pipeline:
-
 BATCH_SIZES = [128]
 EPOCHS = [30]
-
 ALPHAS = [0.75, 0.5, 0.25]
+FULL_NAME = False
 
 # TODO: Cross-validation
 # TODO: Learning Rate Decay
@@ -35,7 +34,8 @@ for batch in BATCH_SIZES:
             # x = tf.keras.layers.Dense(1000)(x)
             outputs = tf.keras.layers.Dense(1, activation="sigmoid")(x)
             model_transfer = tf.keras.Model(inputs, outputs)
-            name = "modelv1_transfer_" + str(epoch) + "epochs_" + str(batch) + "batch_" + str(alpha).split(".")[0] + \
-                   str(alpha).split(".")[1] + "alpha"
+            name = "modelv1_transfer_" + str(epoch) + "epochs_" + str(batch) + "batch"
+            if FULL_NAME:
+                name += "_" + str(alpha).split(".")[0] + str(alpha).split(".")[1] + "alpha"
             history = MobileNet.train_model(model_transfer, epoch, train_ds, val_ds, name)
             MobileNet.generate_history_and_save(history, name)

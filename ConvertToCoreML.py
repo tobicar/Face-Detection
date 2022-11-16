@@ -3,7 +3,7 @@ import coremltools as ct
 import tensorflow as tf
 
 
-PATH_TO_MODEL = "saved_model/model_transfer_10epochs_32batch"
+PATH_TO_MODEL = "saved_model/mobileNetV3/model_transfer_10epochs_32batch"
 model = load_model(PATH_TO_MODEL)
 
 
