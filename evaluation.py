@@ -2,11 +2,11 @@
 import pandas as pd
 import tensorflow as tf
 from datetime import datetime
-import MobileNet
+import helper
 import os
 ##
 # load test dataset with batch size 1
-test_ds = MobileNet.import_test_images("images/test", 1)
+test_ds = helper.import_test_images("images/test", 1)
 ##
 # evaluate all current models and save name, loss and accuracy to array
 data = []
