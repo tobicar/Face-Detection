@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import datetime
 
 
-def load_model_for_training(version, classes, dropout=0.2, pre_trained=False, alpha=1, depth_multiplier=1):
+def load_model_for_training(version, classes, dropout=0.2, pre_trained=False, alpha=1, depth_multiplier=1, input_size=224):
     """
     :param depth_multiplier: depth multiplier of v1
     :param alpha: alpha of v1
@@ -26,7 +26,7 @@ def load_model_for_training(version, classes, dropout=0.2, pre_trained=False, al
             include_preprocessing=True)
     elif version == "v1":
         return tf.keras.applications.MobileNet(
-            input_shape=(224, 224, 3),
+            input_shape=(input_size, input_size, 3),
             include_top=not pre_trained,
             weights="imagenet" if pre_trained else None,
             classes=1000 if pre_trained else classes,
