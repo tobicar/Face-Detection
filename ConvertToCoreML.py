@@ -23,3 +23,8 @@ coremlmodel.author = 'Tobias Kaps & Svea Worms'
 coremlmodel.short_description = 'Face Detection with MobileNetV3'
 coremlmodel.version = "1.0"
 coremlmodel.save('FaceDetection21.mlmodel')
+## example prediction
+from PIL import Image
+example_image = Image.open("/Users/tobias/Downloads/affe.jpg").resize((224, 224))
+out_dict = coremlmodel.predict({"input_2": example_image})
+print(out_dict["classLabel"])
