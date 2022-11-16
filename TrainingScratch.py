@@ -6,9 +6,9 @@ import MobileNet
 BATCH_SIZES = [32]
 EPOCHS = [75]
 
-ALPHAS = [1, 0.75, 0.5, 0.25]
+ALPHAS = [1, 0.75, 0.5, 0.25, 1.25, 1.5, 1.75, 2]
 
-DEPTH_MULTIPLIERS = [1, 2, 3]
+DEPTH_MULTIPLIERS = [1, 0.75, 0.5]  # ERROR: scheint nicht richtig implementiert zu sein in MobileNet
 
 # TODO: Cross-validation
 # TODO: Learning Rate Decay ???
