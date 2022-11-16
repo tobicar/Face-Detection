@@ -1,5 +1,4 @@
 ##
-# imports
 import pandas as pd
 import tensorflow as tf
 from datetime import datetime
@@ -14,7 +13,7 @@ data = []
 directory = "saved_model"
 for model_path in os.listdir(directory):
     # because of macOS DS_Store folder
-    if model_path == ".DS_Store":
+    if model_path == ".DS_Store" or not model_path.__contains__("v1"):
         continue
     model = tf.keras.models.load_model(directory + "/" + model_path)
     evaluation = model.evaluate(test_ds)

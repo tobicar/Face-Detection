@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 import datetime
 
 
-def load_model_for_training(version, classes, dropout=0.2, pre_trained=False):
+def load_model_for_training(version, classes, dropout=0.2, pre_trained=False, alpha=1, depth_multiplier=1):
     """
+    :param depth_multiplier: depth multiplier of v1
+    :param alpha: alpha of v1
     :param version: v3Large, v3Small or v1 can be loaded
     :param classes: count of classes (if weights are not trained)
     :param dropout: dropout rate of last dense layer (default: 20%)
@@ -29,7 +31,9 @@ def load_model_for_training(version, classes, dropout=0.2, pre_trained=False):
             weights="imagenet" if pre_trained else None,
             classes=1000 if pre_trained else classes,
             dropout=dropout,
-            classifier_activation="sigmoid")
+            classifier_activation="sigmoid",
+            alpha=alpha,
+            depth_multiplier=depth_multiplier)
     elif version == "v3small":
         return tf.keras.applications.MobileNetV3Small(
             input_shape=(224, 224, 3),
