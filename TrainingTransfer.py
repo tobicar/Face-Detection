@@ -8,10 +8,6 @@ import MobileNet
 BATCH_SIZES = [32, 64, 128, 256]
 EPOCHS = [10, 30]
 
-ALPHAS = [1, 0.75, 0.5, 0.25]
-
-DEPTH_MULTIPLIERS = [1, 0.75, 0.5]
-
 # TODO: Cross-validation
 # TODO: Learning Rate Decay
 # TODO: Early Stopping (avoid Overfitting)
