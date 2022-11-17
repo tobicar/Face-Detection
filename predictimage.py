@@ -5,7 +5,8 @@ import tkinter as tk
 from tkinter import filedialog
 import tensorflow as tf
 ##
-PATH_TO_MODEL = "saved_model/mobileNetV3/model_transfer_10epochs_32batch"
+PATH_TO_MODEL = "saved_model/modelv1_scratch_75epochs_32batch_025alpha_1depthMultiplier"
+#PATH_TO_MODEL = "saved_model/modelv1_scratch_75epochs_32batch_1alpha_1depthMultiplier"
 model = tf.keras.models.load_model(PATH_TO_MODEL)
 
 ##

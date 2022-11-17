@@ -19,3 +19,6 @@ def split_image_directory():
             shutil.copy(directory + "/" + folder + "/" + file, "images/train/" + folder + "/" + file)
         for file in test:
             shutil.copy(directory + "/" + folder + "/" + file, "images/test/" + folder + "/" + file)
+
+
+split_image_directory()

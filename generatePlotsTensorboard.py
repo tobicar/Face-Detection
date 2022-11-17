@@ -2,24 +2,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-##
-# change name of the run here, to generate plots
-MODEL_VERSION = "modelv1_transfer_10epochs"
-BATCH = "32batches"
-RUN_NAME = "run-20221116-082055"
-PATH = "presentation/" + MODEL_VERSION + "/" + BATCH + "/" + RUN_NAME
-TRAIN_ACC_PATH = PATH + "_train-tag-epoch_accuracy.csv"
-VAL_ACC_PATH = PATH + "_validation-tag-epoch_accuracy.csv"
-#TRAIN_LOSS_PATH = PATH + "_train-tag-epoch_loss.csv"
-#VAL_LOSS_PATH = PATH + "_validation-tag-epoch_loss.csv"
-train_acc = pd.read_csv(TRAIN_ACC_PATH)
-val_acc = pd.read_csv(VAL_ACC_PATH)
-train_acc_64 = pd.read_csv("presentation/modelv1_transfer_10epochs/64batches/run-20221116-083323_train-tag-epoch_accuracy.csv")
-val_acc_64 = pd.read_csv("presentation/modelv1_transfer_10epochs/64batches/run-20221116-083323_validation-tag-epoch_accuracy.csv")
-train_acc_128 = pd.read_csv("presentation/modelv1_transfer_10epochs/128batches/run-20221116-085028_train-tag-epoch_accuracy.csv")
-val_acc_128 = pd.read_csv("presentation/modelv1_transfer_10epochs/128batches/run-20221116-085028_validation-tag-epoch_accuracy.csv")
-train_acc_256 = pd.read_csv("presentation/modelv1_transfer_10epochs/256batches/run-20221116-090355_train-tag-epoch_accuracy.csv")
-val_acc_256 = pd.read_csv("presentation/modelv1_transfer_10epochs/256batches/run-20221116-090355_validation-tag-epoch_accuracy.csv")
 ## modelv1_transfer_30epochs
 train_acc = pd.read_csv("presentation/modelv1_transfer_30epochs/32batches/run-20221116-082410_train-tag-epoch_accuracy.csv")
 val_acc = pd.read_csv("presentation/modelv1_transfer_30epochs/32batches/run-20221116-082410_validation-tag-epoch_accuracy.csv")
