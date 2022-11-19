@@ -1,0 +1,5 @@
+,name,time
+0,saved_model/modelv1_scratch_30epochs_32batch_10alpha_128inputSize,18.19554901123047
+1,saved_model/modelv1_scratch_30epochs_32batch_10alpha_160inputSize,18.835304975509644
+2,saved_model/modelv1_scratch_30epochs_32batch_10alpha_192inputSize,18.486779928207397
+3,saved_model/modelv1_scratch_30epochs_32batch,19.580249786376953

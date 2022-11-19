@@ -1,0 +1,7 @@
+,name,loss,acc,epochs,batch,alpha,depth_multiplier
+0,modelv1_scratch_30epochs_32batch_10alpha_128inputSize,21,0.9725322127342224,30,32,10,128inputSize
+1,modelv1_scratch_30epochs_32batch_10alpha_160inputSize,0.02834209054708481,0.9909871220588684,30,32,10,160inputSize
+2,modelv1_scratch_75epochs_32batch_10alpha_128inputSize,0.024607142433524132,0.99442058801651,75,32,10,128inputSize
+3,modelv1_scratch_75epochs_32batch_10alpha_160inputSize,0.014796352945268154,0.9974249005317688,75,32,10,160inputSize
+4,modelv1_scratch_30epochs_32batch_10alpha_192inputSize,0.05403390899300575,0.981545090675354,30,32,10,192inputSize
+5,modelv1_scratch_75epochs_32batch_10alpha_192inputSize,0.019251026213169098,0.995708167552948,75,32,10,192inputSize

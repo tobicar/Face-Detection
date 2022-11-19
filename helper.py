@@ -96,7 +96,7 @@ def import_train_images(directory, seed=123, batch_size=32, imagesize=224):
         crop_to_aspect_ratio=True)
 
 
-def import_test_images(directory, batch_size=32):
+def import_test_images(directory, batch_size=32,image_size=224):
     """
     import test images from test directory
     :param directory: path to the directory
@@ -108,7 +108,7 @@ def import_test_images(directory, batch_size=32):
         label_mode="binary",
         class_names=["no_face", "face"],
         batch_size=batch_size,
-        image_size=(224, 224),
+        image_size=(image_size, image_size),
         shuffle=True,
         crop_to_aspect_ratio=True)
 
@@ -126,7 +126,7 @@ def print_original_image(path, text=""):
     # hide y-axis
     ax.get_yaxis().set_visible(False)
     ax.set_xticklabels([])
-    ax.set_xlabel(text, loc='left')
+    ax.set_xlabel(text, loc='left', size=20)
 
 
 def predict_image(path, model, show_image=True):

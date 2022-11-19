@@ -3,7 +3,11 @@
 Face Detection with deep neural networks
 
 
-## Auswahl der Datenbasis:
+
+# Second Milestone:
+goal --> Detection of whether a face is present in the image or not. The prediction indicates the probability of a face.
+
+## Selection of the database:
 
 1. Klasse:
 - Bilder die ein Gesicht enthalten
@@ -129,11 +133,6 @@ Bilder sind häufiger vorhanden und müssen noch bearbeitet werden:
   - contains plots and csv files that are shown in the presentation
 - [saved_model](saved_model)
   - contains all trained models, that can be loaded
-
-
-# Second Milestone:
-
-
 
 
 # Third Milestone:
