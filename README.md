@@ -89,32 +89,50 @@ The dataset contains of 15.523 pictures with 6.941 faces and 8.582 no faces.
 
 # Third Milestone:
 
-Aufgabe: Erkennung von Merkmalen
+goal --> Detection of multiple features in the image (face, maks, age)
 
-Implementieren Sie eine Methode zur Erkennung von Merkmalen basierend auf einem Gesichtsbild
-Merkmale:
-- Maskenerkennung (Klassifikation: Maske/ keine Maske) -> binary Cross entropy
-- Altersbestimmung (Regression) -> MSE
-- Gesichtserkennung aus Meilenstein2 (transferLearning Model) -> binary Cross entropy
+features:
+ - face detection (classification: face / no face) -> binary cross entropy
+   - second milestone -> transfer learning model
+ - mask detection (classification: mask / no mask) -> binary cross entropy
+ - age detection (regression) -> mean square error
 
-Evaluation: Visualisierung und Quantitative Bewertung der Ergebnisse
+evaluation: visualization and quantitative assessment of results
 
-
-Bild Ordner Struktur:
-
-Face (14.000)
-- Mask (7.000) -> augmentierung
-- No Mask (7.000)
-    - Age
-No_face (8.500) -> (14.000)
+image folder structure:
+- face (14.000)
+  - Mask (7.000) -> augmentation
+  - No Mask (7.000)
+      - Age
+- No_face (8.500) -> (14.000)
 
 
-Filename, image path, face (0/1), mask (0/1), age (int für nicht vorhanden -1) 
+feature table:
+
+| filename | image_path |  face  |  mask  |            age            |
+|----------|:----------:|:------:|:------:|:-------------------------:|
+|          |            | 0 / 1  | 0 / 1  | int ( -1 : no age given)  |
 
 
-Erkenntnisse:
-- Es gibt viele Maskenbilder mit asiatischen Gesichtern
 
+## Selection of the database:
+
+included first and second classes from second milestone
+
+3. class (pictures containing faces with mask):
+
+- [FMD_Dataset](https://www.kaggle.com/datasets/prithwirajmitra/covid-face-mask-detection-dataset)
+
+  We filtered the dataset and deleted all pictures of faces with scarf and without masks.
+  The complex pictures without masks are added to 1. class
+
+
+- [COVID Face Mask Detection Dataset](https://www.kaggle.com/datasets/prithwirajmitra/covid-face-mask-detection-dataset)
+
+  
+issues:
+ - many pictures of faces with mask include asian faces
+  
 
 
 
