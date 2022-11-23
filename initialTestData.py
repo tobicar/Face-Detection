@@ -1,6 +1,7 @@
 import os
 import random
 import shutil
+import pandas as pd
 
 
 def split_image_directory():
@@ -26,7 +27,8 @@ split_image_directory()
 
 ##
 
-def create_feature_table(directory):
+def create_feature_table(directory, path):
+    data = []
     folder_list = os.listdir(directory)
     for folder in folder_list:
         subdirectory = directory + "/" + folder
@@ -37,18 +39,22 @@ def create_feature_table(directory):
                 folder_list.append(file)
             else:
                 # set feature parameter
-                filename = file
                 image_path = subdirectory + "/" + file
                 face = 0
                 mask = 0
                 age = -1
                 if subdirectory.__contains__("face"):
                     face = 1
-                    if folder == "mask":
-                        mask = 1
-                    elif folder == "face":
+                    if folder == "face":
                         try:
                             age = int(file.split("_")[0])
                         except:
                             age = -1
-                #TODO: save in csv data
+                if subdirectory.__contains__("mask"):
+                    mask = 1
+                # create row in csv data
+                row = {"filename": file, "image_path": image_path, "face": face, "mask": mask, "age": age}
+                data.append(row)
+    # save data to pandas Dataframe and to file
+    df = pd.DataFrame(data)
+    df.to_csv(path + ".csv")
