@@ -96,9 +96,10 @@ def import_train_images(directory, seed=123, batch_size=32, imagesize=224):
         crop_to_aspect_ratio=True)
 
 
-def import_test_images(directory, batch_size=32,image_size=224):
+def import_test_images(directory, batch_size=32, image_size=224):
     """
     import test images from test directory
+    :param image_size: import size of images
     :param directory: path to the directory
     :param batch_size: Size of the batches of Data
     :return: tf.data.Dataset with test images and labels
