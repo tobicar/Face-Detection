@@ -89,5 +89,33 @@ The dataset contains of 15.523 pictures with 6.941 faces and 8.582 no faces.
 
 # Third Milestone:
 
+Aufgabe: Erkennung von Merkmalen
+
+Implementieren Sie eine Methode zur Erkennung von Merkmalen basierend auf einem Gesichtsbild
+Merkmale:
+- Maskenerkennung (Klassifikation: Maske/ keine Maske) -> binary Cross entropy
+- Altersbestimmung (Regression) -> MSE
+- Gesichtserkennung aus Meilenstein2 (transferLearning Model) -> binary Cross entropy
+
+Evaluation: Visualisierung und Quantitative Bewertung der Ergebnisse
+
+
+Bild Ordner Struktur:
+
+Face (14.000)
+- Mask (7.000) -> augmentierung
+- No Mask (7.000)
+    - Age
+No_face (8.500) -> (14.000)
+
+
+Filename, image path, face (0/1), mask (0/1), age (int für nicht vorhanden -1) 
+
+
+Erkenntnisse:
+- Es gibt viele Maskenbilder mit asiatischen Gesichtern
+
+
+
 
 # Fourth Milestone:
