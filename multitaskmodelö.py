@@ -1,3 +1,4 @@
+import pandas as pd
 import tensorflow as tf
 import helper
 import numpy as np
@@ -60,3 +61,37 @@ model_history = model.fit(dataset,epochs=15)
 
 
 tf.data.Dataset.from_tensor_slices()
+## plot images from csv
+
+#visualising the dataset
+
+
+def get_label(file_path, label_csv):
+    row =label_csv[label_csv["image_path"] == file_path]
+    face = row['face'][0]
+    mask = row['mask'][0]
+    age =  row['age'][0]
+    return {'face_detection': face,'mask_detection': mask,'age_detection':age}
+
+##
+def decode_img(img_path):
+    img = tf.keras.preprocessing.image.load_img(img_path, target_size=(224, 224))
+    return tf.keras.preprocessing.image.img_to_array(img)
+
+##
+def process_path(file_path):
+    csv_file = pd.read_csv("images/featureTable.csv")
+    #label = get_label(file_path, csv_file)
+    label = {'face_detection': 1,'mask_detection': 2,'age_detection':3}
+    # Load the raw data from the file as a string
+    #img = tf.io.read_file(file_path)
+    img = decode_img(file_path)
+    #img = file_path
+    return img, label
+
+##
+data = pd.read_csv("images/featureTable.csv")
+dataset = tf.data.Dataset.from_tensor_slices(data["image_path"])
+##
+train_ds = dataset.map(process_path)
+

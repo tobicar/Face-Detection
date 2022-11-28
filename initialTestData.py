@@ -70,9 +70,15 @@ def create_feature_table(directory, path):
     folders = os.listdir(directory)
     folder_list = []
     for folder in folders:
+        if folder == ".DS_Store":
+            continue
         folder_list.append(directory + "/" + folder)
     for subdirectory in folder_list:
+        if folder == ".DS_Store":
+            continue
         for file in os.listdir(subdirectory):
+            if file == ".DS_Store":
+                continue
             # prove if file is a folder
             if file.split(".").__len__() == 1:
                 # add to folderList
@@ -83,7 +89,7 @@ def create_feature_table(directory, path):
                 face = 0
                 mask = 0
                 age = -1
-                if subdirectory.__contains__("/face/"):
+                if image_path.__contains__("/face/"):
                     face = 1
                     parts = subdirectory.split("/")
                     if parts[parts.__len__() - 1] == "face":
@@ -93,7 +99,7 @@ def create_feature_table(directory, path):
                                 age = int(filename_parts[0])
                         except:
                             age = -1
-                if subdirectory.__contains__("/mask/"):
+                if image_path.__contains__("/mask/"):
                     mask = 1
                 # create row in csv data
                 row = {"filename": file, "image_path": image_path, "face": face, "mask": mask, "age": age}

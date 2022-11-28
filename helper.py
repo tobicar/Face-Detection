@@ -1,3 +1,4 @@
+import pandas as pd
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -209,3 +210,29 @@ def generate_history_and_save(history, name):
     plt.title('Training and Validation Loss')
     plt.xlabel('epoch')
     plt.savefig("plots/" + name)
+
+
+def plot_nine_pictures_from_csv(path_to_csv):
+    """
+    plots nine random pictures with infos from the given dataset (as csv)
+    :param path_to_csv: path to csv file which is generate by initialTestData.py func: create_feature_table
+    :return: nothing but opens a window with the pictures
+    """
+    data = pd.read_csv(path_to_csv)
+    images = []
+    subtext = []
+    random_ints = np.random.randint(low=1, high=data.shape[0], size=(9,))
+    for i in random_ints:
+        img = tf.keras.preprocessing.image.load_img(data['image_path'].iloc[i])
+        text = "Face: " + str(data['face'].iloc[i]) + "; Mask: " + str(data['mask'].iloc[i]) + "; Age: " + str(
+            data['age'].iloc[i])
+        images.append(img)
+        subtext.append(text)
+    fig, axs = plt.subplots(nrows=3, ncols=3, figsize=(14, 10))
+    k = 0
+    for i in range(0, 3):
+        for j in range(0, 3):
+            axs[i, j].imshow(images[k])
+            axs[i, j].set_title(subtext[k])
+            k += 1
+    plt.show()
