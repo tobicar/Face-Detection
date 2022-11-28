@@ -1,3 +1,4 @@
+##
 import pandas as pd
 import tensorflow as tf
 import helper
@@ -31,7 +32,9 @@ def compileModel(model):
                                           'mask_detection': 'binary_crossentropy',
                                           'age_detection': 'mse'},
                   loss_weights={'face_detection': 0.33, 'mask_detection':0.33, 'age_detection': 0.33},
-                  metrics=["accuracy"])
+                  metrics={'face_detection': 'accuracy',
+                                          'mask_detection': 'accuracy',
+                                          'age_detection': 'mse'})
     return model
 
 ##
@@ -59,30 +62,37 @@ model_history = model.fit(dataset,epochs=15)
 #                          {'face_detection': y_train_1,'mask_detection': y_train_2,'age_detection':y_train_3}, epochs=15)
 
 
-
+##
 tf.data.Dataset.from_tensor_slices()
 ## plot images from csv
 
 #visualising the dataset
 
-
-def get_label(file_path, label_csv):
-    row =label_csv[label_csv["image_path"] == file_path]
-    face = row['face'][0]
-    mask = row['mask'][0]
-    age =  row['age'][0]
-    return {'face_detection': face,'mask_detection': mask,'age_detection':age}
+##
+def get_label(label):
+    #row =label_csv[label_csv["image_path"] == file_path]
+    return {'face_detection': tf.reshape(label[0], (-1,1)),
+            'mask_detection':  tf.reshape(label[1], (-1,1)),
+            'age_detection': tf.reshape(label[2], (-1,1))}
 
 ##
 def decode_img(img_path):
-    img = tf.keras.preprocessing.image.load_img(img_path, target_size=(224, 224))
-    return tf.keras.preprocessing.image.img_to_array(img)
+    image_size = (224,224)
+    num_channels = 3
+    img = tf.io.read_file(img_path)
+    img = tf.image.decode_image(
+        img, channels=num_channels, expand_animations=False
+    )
+    img = tf.image.resize(img, image_size, method="bilinear")
+    img.set_shape((image_size[0], image_size[1], num_channels))
+    return img
+    #img = tf.keras.preprocessing.image.load_img(img_path, target_size=(224, 224))
+    #return tf.keras.preprocessing.image.img_to_array(img)
 
 ##
-def process_path(file_path):
-    csv_file = pd.read_csv("images/featureTable.csv")
-    #label = get_label(file_path, csv_file)
-    label = {'face_detection': 1,'mask_detection': 2,'age_detection':3}
+def process_path(file_path,labels):
+    label = get_label(labels)
+    #label = {'face_detection': 1,'mask_detection': 2,'age_detection':3}
     # Load the raw data from the file as a string
     #img = tf.io.read_file(file_path)
     img = decode_img(file_path)
@@ -91,7 +101,8 @@ def process_path(file_path):
 
 ##
 data = pd.read_csv("images/featureTable.csv")
-dataset = tf.data.Dataset.from_tensor_slices(data["image_path"])
+dataset = tf.data.Dataset.from_tensor_slices((data["image_path"], data[["face","mask","age"]]))
 ##
 train_ds = dataset.map(process_path)
+train_ds = train_ds.shuffle(1).batch(32)
 
