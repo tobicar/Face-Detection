@@ -83,7 +83,7 @@ def create_feature_table(directory, path):
                 face = 0
                 mask = 0
                 age = -1
-                if subdirectory.__contains__("face") and not subdirectory.__contains__("no_face"):
+                if subdirectory.__contains__("/face"):
                     face = 1
                     parts = subdirectory.split("/")
                     if parts[parts.__len__() - 1] == "face":
@@ -91,7 +91,7 @@ def create_feature_table(directory, path):
                             age = int(file.split("_")[0])
                         except:
                             age = -1
-                if subdirectory.__contains__("mask") and not subdirectory.__contains__("no_mask"):
+                if subdirectory.__contains__("/mask"):
                     mask = 1
                 # create row in csv data
                 row = {"filename": file, "image_path": image_path, "face": face, "mask": mask, "age": age}
