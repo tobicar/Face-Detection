@@ -109,9 +109,9 @@ image folder structure:
 
 feature table:
 
-| filename | image_path |  face  |  mask  |            age            |
-|----------|:----------:|:------:|:------:|:-------------------------:|
-|          |            | 0 / 1  | 0 / 1  | int ( -1 : no age given)  |
+| filename | image_path |  face  |  mask  |                       age                        |
+|----------|:----------:|:------:|:------:|:------------------------------------------------:|
+|          |            | 0 / 1  | 0 / 1  | int ( -1 : no age given; 0 : image with no face) |
 
 
 

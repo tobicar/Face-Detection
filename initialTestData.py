@@ -51,13 +51,14 @@ def split_image_directory_hierarchical(directory):
         random.shuffle(file_list)
         train = file_list[0:int(len(file_list) * 0.85)]
         test = file_list[int(len(file_list) * 0.85):]
+        val = train[0:int(len(train) * 0.1765)]
         for file in train:
             shutil.copy(subdirectory + "/" + file, "images/train2" + subdirectory[directory.__len__():] + "/" + file)
         for file in test:
             shutil.copy(subdirectory + "/" + file, "images/test2" + subdirectory[directory.__len__():] + "/" + file)
+        for file in val:
+            shutil.copy(subdirectory + "/" + file, "images/val2" + subdirectory[directory.__len__():] + "/" + file)
 
-
-##
 
 def create_feature_table(directory, path):
     """
@@ -74,7 +75,7 @@ def create_feature_table(directory, path):
             continue
         folder_list.append(directory + "/" + folder)
     for subdirectory in folder_list:
-        if folder == ".DS_Store":
+        if subdirectory == ".DS_Store":
             continue
         for file in os.listdir(subdirectory):
             if file == ".DS_Store":
@@ -107,3 +108,10 @@ def create_feature_table(directory, path):
     # save data to pandas Dataframe and to file
     df = pd.DataFrame(data)
     df.to_csv(path + ".csv")
+
+## split Milestone 2
+
+split_image_directory_hierarchical("images/rawdata")
+create_feature_table("images/train2", "images/featureTableTrain")
+create_feature_table("images/test2", "images/featureTableTest")
+create_feature_table("images/val2", "images/featureTableVal")
