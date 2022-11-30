@@ -21,12 +21,32 @@ def createModel():
     mask_detection = tf.keras.layers.Dense(1,activation="sigmoid", name='mask_detection')(feature_extractor)
 
     # age detecion
-    age_detetion = tf.keras.layers.Dense(1, name="age_detection")(feature_extractor)
+    age_detection = tf.keras.layers.Dense(1, name="age_detection")(feature_extractor)
 
-    model = tf.keras.Model(inputs = inputs, outputs = [face_detection, mask_detection, age_detetion])
+    model = tf.keras.Model(inputs = inputs, outputs = [face_detection, mask_detection, age_detection])
     return model
 
 ##
+def create_model_age():
+    model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=0.25)
+    model_pretrained.trainable = False
+    inputs = tf.keras.Input(shape=(224, 224, 3), name='input')
+    feature_extractor = tf.keras.applications.mobilenet.preprocess_input(inputs)
+    feature_extractor = model_pretrained(feature_extractor, training=False)
+    feature_extractor = tf.keras.layers.GlobalAveragePooling2D()(feature_extractor)
+    feature_extractor = tf.keras.layers.Dropout(0.2)(feature_extractor)
+    age_detection = tf.keras.layers.Dense(92, activation="softmax", name="age_detection")(feature_extractor)
+    model = tf.keras.Model(inputs=inputs, outputs=age_detection)
+    return model
+
+def custom_sparse_categorical_crossentropy(y_true,y_pred):
+    return tf.keras.losses.sparse_categorical_crossentropy(y_true,y_pred, ignore_class=-1)
+def compile_model_age(model):
+    model.compile(optimizer='adam', loss=custom_sparse_categorical_crossentropy,
+                  metrics='accuracy')
+    return model
+
+
 def createModelV2():
     model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=0.25)
     model_pretrained.trainable = False
@@ -43,14 +63,19 @@ def createModelV2():
     mask_detection = tf.keras.layers.Dense(1, activation="sigmoid", name='mask_detection')(feature_extractor)
 
     # age detecion
-    age_detetion = tf.keras.layers.Dense(101, activation="softmax", name="age_detection")(feature_extractor)
+    # one Class for no age = 0
+    # faces with unknown age = -1 --> ignored
+    #  91 classes for ages between 10 and 100
+    age_detection = tf.keras.layers.Dense(92, activation="softmax", name="age_detection")(feature_extractor)
 
-    model = tf.keras.Model(inputs=inputs, outputs=[face_detection, mask_detection, age_detetion])
+    model = tf.keras.Model(inputs=inputs, outputs=[face_detection, mask_detection, age_detection])
     return model
 
 ##
-def custom_sparse_categorical_crossentropy(y_true,y_pred):
-    return tf.keras.losses.sparse_categorical_crossentropy(y_true,y_pred, ignore_class=-1)
+
+def custom_accuracy(y_true,y_pred):
+    pass
+
 
 def compileModelV2(model):
     model.compile(optimizer='adam', loss={'face_detection': 'binary_crossentropy',
@@ -94,11 +119,17 @@ labels_mask = np.array([0,1,0],dtype=np.float32)
 dataset = tf.data.Dataset.from_tensor_slices((x_train, {'face_detection':labels_face, 'mask_detection':labels_mask,'age_detection':labels_age})).batch(2)
 
 ##
-def get_label(label):
-    #row =label_csv[label_csv["image_path"] == file_path]
-    return {'face_detection': tf.reshape(tf.keras.backend.cast(label[0], tf.keras.backend.floatx()), (-1,1)),
-            'mask_detection':  tf.reshape(tf.keras.backend.cast(label[1], tf.keras.backend.floatx()), (-1,1)),
-            'age_detection': tf.reshape(tf.keras.backend.cast(label[2], tf.keras.backend.floatx()), (-1,1))}
+def get_label(label, only_age=False):
+    if label[2] == 0:
+        age = label[2]
+    else:
+        age = label[2]-9
+    if only_age:
+        return {'age_detection': tf.reshape(tf.keras.backend.cast(age, tf.keras.backend.floatx()), (-1,1))}
+    else:
+        return {'face_detection': tf.reshape(tf.keras.backend.cast(label[0], tf.keras.backend.floatx()), (-1,1)),
+                'mask_detection':  tf.reshape(tf.keras.backend.cast(label[1], tf.keras.backend.floatx()), (-1,1)),
+                'age_detection': tf.reshape(tf.keras.backend.cast(age, tf.keras.backend.floatx()), (-1,1))} # -9 because there are no classes between age 0 and 9
 
 ##
 def decode_img(img_path):
@@ -116,7 +147,7 @@ def decode_img(img_path):
 
 ##
 def process_path(file_path,labels):
-    label = get_label(labels)
+    label = get_label(labels, only_age=True)
     #label = {'face_detection': 1,'mask_detection': 2,'age_detection':3}
     # Load the raw data from the file as a string
     #img = tf.io.read_file(file_path)
@@ -125,16 +156,22 @@ def process_path(file_path,labels):
     return img, label
 
 ##
-data = pd.read_csv("images/featureTable.csv")
+data = pd.read_csv("images/featureTable2.csv")
 dataset = tf.data.Dataset.from_tensor_slices((data["image_path"], data[["face","mask","age"]]))
 ##
 train_ds = dataset.map(process_path)
-train_ds = train_ds.shuffle(21403).batch(32)
+##
+train_ds = train_ds.shuffle(21403, seed=123, reshuffle_each_iteration=False).batch(64)
+##
+train_age = data[data["age"] > 10]
+dataset_age = tf.data.Dataset.from_tensor_slices((train_age["image_path"], train_age[["face","mask","age"]]))
+train_ds_age = dataset_age.map(process_path)
+
 
 ##
-model = createModel()
-model = compileModel(model)
-model_history = model.fit(train_ds,epochs=5)
+model = createModelV2()
+model = compileModelV2(model)
+model_history = model.fit(train_ds,epochs=10)
 #model_history = model.fit({'input':x_train},
 #                          {'face_detection': y_train_1,'mask_detection': y_train_2,'age_detection':y_train_3}, epochs=15)
 

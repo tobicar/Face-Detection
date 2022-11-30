@@ -34,11 +34,17 @@ def split_image_directory_hierarchical(directory):
     folders = os.listdir(directory)
     folder_list = []
     for folder in folders:
+        if folder == ".DS_Store":
+            continue
         folder_list.append(directory + "/" + folder)
     for subdirectory in folder_list:
+        if subdirectory == ".DS_Store":
+            continue
         # split files and folders
         file_list = []
         for file in os.listdir(subdirectory):
+            if file == ".DS_Store":
+                continue
             # prove if file is a folder
             if file.split(".").__len__() == 1:
                 # add folder to folder_list
@@ -76,7 +82,7 @@ def create_feature_table(directory, path):
             continue
         folder_list.append(directory + "/" + folder)
     for subdirectory in folder_list:
-        if subdirectory == ".DS_Store":
+        if folder == ".DS_Store":
             continue
         for file in os.listdir(subdirectory):
             if file == ".DS_Store":
@@ -90,18 +96,18 @@ def create_feature_table(directory, path):
                 image_path = subdirectory + "/" + file
                 face = 0
                 mask = 0
-                age = -1
+                age = 0
                 if image_path.__contains__("/face/"):
                     face = 1
-                    parts = subdirectory.split("/")
-                    if parts[parts.__len__() - 1] == "face":
-                        try:
-                            filename_parts = file.split("_")
-                            if filename_parts.__len__() > 1:
-                                if filename_parts[0].__len__() < 4 and filename_parts[0].isnumeric():
-                                    age = int(filename_parts[0])
-                        except:
+                    try:
+                        filename_parts = file.split("_")
+                        if filename_parts.__len__() > 1:
+                            if filename_parts[0].__len__() < 4 and filename_parts[0].isnumeric():
+                                age = int(filename_parts[0])
+                        else:
                             age = -1
+                    except:
+                        age = -1
                 if image_path.__contains__("/mask/"):
                     mask = 1
                 # create row in csv data
