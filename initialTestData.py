@@ -55,10 +55,9 @@ def split_image_directory_hierarchical(directory):
         # split list of files into train and test
         random.seed(0)
         random.shuffle(file_list)
-        train = file_list[0:int(len(file_list) * 0.85)]
-        test = file_list[int(len(file_list) * 0.85):]
-        val = train[0:int(len(train) * 0.1765)]
-        train = train[int(len(train) * 0.1765):]
+        train = file_list[0:int(len(file_list) * 0.70)]
+        test = file_list[int(len(file_list) * 0.70):int(len(file_list) * 0.85)]
+        val = file_list[int(len(file_list) * 0.85):]
         for file in train:
             shutil.copy(subdirectory + "/" + file, "images/train2" + subdirectory[directory.__len__():] + "/" + file)
         for file in test:

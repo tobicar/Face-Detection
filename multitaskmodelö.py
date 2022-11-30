@@ -28,6 +28,7 @@ def createModel():
 
 ##
 def create_model_age():
+    #TODO: Klassifizierung für Altersklassen (z.B. 10-20, 20-30, etc.)
     model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=0.25)
     model_pretrained.trainable = False
     inputs = tf.keras.Input(shape=(224, 224, 3), name='input')
@@ -35,8 +36,32 @@ def create_model_age():
     feature_extractor = model_pretrained(feature_extractor, training=False)
     feature_extractor = tf.keras.layers.GlobalAveragePooling2D()(feature_extractor)
     feature_extractor = tf.keras.layers.Dropout(0.2)(feature_extractor)
-    age_detection = tf.keras.layers.Dense(92, activation="softmax", name="age_detection")(feature_extractor)
+    age_detection = tf.keras.layers.Dense(102, activation="softmax", name="age_detection")(feature_extractor)
     model = tf.keras.Model(inputs=inputs, outputs=age_detection)
+    return model
+
+def create_model_age_regression():
+    #TODO: alpha variieren
+    #TODO: learning rate
+    #TODO: validierung hinzufügen
+    model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=0.25)
+    model_pretrained.trainable = False
+    inputs = tf.keras.Input(shape=(224, 224, 3), name='input')
+    feature_extractor = tf.keras.applications.mobilenet.preprocess_input(inputs)
+    feature_extractor = model_pretrained(feature_extractor, training=False)
+    feature_extractor = tf.keras.layers.GlobalAveragePooling2D()(feature_extractor)
+    feature_extractor = tf.keras.layers.Dropout(0.2)(feature_extractor)
+    #TODO: mehr Dense Layer
+    feature_extractor = tf.keras.layers.Dense(1000)(feature_extractor)
+    feature_extractor = tf.keras.layers.Dense(500)(feature_extractor)
+    feature_extractor = tf.keras.layers.Dense(250)(feature_extractor)
+    age_detection = tf.keras.layers.Dense(1, name="age_detection")(feature_extractor)
+    model = tf.keras.Model(inputs=inputs, outputs=age_detection)
+    return model
+
+def compile_model_age_regression(model):
+    model.compile(optimizer='adam', loss='mse',
+                  metrics=['mse'])
     return model
 
 def custom_sparse_categorical_crossentropy(y_true,y_pred):
@@ -119,19 +144,21 @@ labels_mask = np.array([0,1,0],dtype=np.float32)
 dataset = tf.data.Dataset.from_tensor_slices((x_train, {'face_detection':labels_face, 'mask_detection':labels_mask,'age_detection':labels_age})).batch(2)
 
 ##
-def get_label(label, only_age=False):
-    if label[2] == 0:
-        age = label[2]
-    else:
-        age = label[2]-9
-    if only_age:
-        return {'age_detection': tf.reshape(tf.keras.backend.cast(age, tf.keras.backend.floatx()), (-1,1))}
-    else:
-        return {'face_detection': tf.reshape(tf.keras.backend.cast(label[0], tf.keras.backend.floatx()), (-1,1)),
-                'mask_detection':  tf.reshape(tf.keras.backend.cast(label[1], tf.keras.backend.floatx()), (-1,1)),
-                'age_detection': tf.reshape(tf.keras.backend.cast(age, tf.keras.backend.floatx()), (-1,1))} # -9 because there are no classes between age 0 and 9
+@tf.function
+def get_label(label):
+    #if label[2] == 0:
+    #    age = label[2]
+    #else:
+    #    age = label[2]-9
+    #if only_age:
+    return {'age_detection': tf.reshape(tf.keras.backend.cast(label[2], tf.keras.backend.floatx()), (-1,1))}
+    #else:
+     #   return {'face_detection': tf.reshape(tf.keras.backend.cast(label[0], tf.keras.backend.floatx()), (-1,1)),
+      #          'mask_detection':  tf.reshape(tf.keras.backend.cast(label[1], tf.keras.backend.floatx()), (-1,1)),
+       #         'age_detection': tf.reshape(tf.keras.backend.cast(age, tf.keras.backend.floatx()), (-1,1))} # -9 because there are no classes between age 0 and 9
 
 ##
+@tf.function
 def decode_img(img_path):
     image_size = (224,224)
     num_channels = 3
@@ -146,8 +173,9 @@ def decode_img(img_path):
     #return tf.keras.preprocessing.image.img_to_array(img)
 
 ##
+@tf.function
 def process_path(file_path,labels):
-    label = get_label(labels, only_age=True)
+    label = get_label(labels)
     #label = {'face_detection': 1,'mask_detection': 2,'age_detection':3}
     # Load the raw data from the file as a string
     #img = tf.io.read_file(file_path)
@@ -164,6 +192,7 @@ train_ds = dataset.map(process_path)
 train_ds = train_ds.shuffle(21403, seed=123, reshuffle_each_iteration=False).batch(64)
 ##
 train_age = data[data["age"] > 10]
+train_age = train_age[train_age["age"] <= 100]
 dataset_age = tf.data.Dataset.from_tensor_slices((train_age["image_path"], train_age[["face","mask","age"]]))
 train_ds_age = dataset_age.map(process_path)
 
