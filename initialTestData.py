@@ -52,6 +52,7 @@ def split_image_directory_hierarchical(directory):
         train = file_list[0:int(len(file_list) * 0.85)]
         test = file_list[int(len(file_list) * 0.85):]
         val = train[0:int(len(train) * 0.1765)]
+        train = train[int(len(train) * 0.1765):]
         for file in train:
             shutil.copy(subdirectory + "/" + file, "images/train2" + subdirectory[directory.__len__():] + "/" + file)
         for file in test:
@@ -97,7 +98,8 @@ def create_feature_table(directory, path):
                         try:
                             filename_parts = file.split("_")
                             if filename_parts.__len__() > 1:
-                                age = int(filename_parts[0])
+                                if filename_parts[0].__len__() < 4 and filename_parts[0].isnumeric():
+                                    age = int(filename_parts[0])
                         except:
                             age = -1
                 if image_path.__contains__("/mask/"):
