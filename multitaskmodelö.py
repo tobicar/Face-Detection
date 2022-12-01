@@ -5,6 +5,13 @@ import helper
 import numpy as np
 
 ##
+def add_face(x):
+    greater = tf.keras.backend.greater_equal(x, 0.5) #will return boolean values
+    greater = tf.keras.backend.cast(greater, dtype=tf.keras.backend.floatx()) #will convert bool to 0 and 1
+    return greater
+
+
+
 def createModel():
     model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=0.25)
     model_pretrained.trainable = False
@@ -21,7 +28,10 @@ def createModel():
     mask_detection = tf.keras.layers.Dense(1,activation="sigmoid", name='mask_detection')(feature_extractor)
 
     # age detecion
-    age_detection = tf.keras.layers.Dense(1, name="age_detection")(feature_extractor)
+    face_detection_ground_truth = tf.keras.layers.Lambda(add_face)(face_detection)
+    age_detection = tf.keras.layers.Dense(250, activation="relu")(feature_extractor)
+    age_detection = tf.keras.layers.Dense(1)(age_detection)
+    age_detection = tf.keras.layers.multiply([age_detection, face_detection_ground_truth],name="age_detection")
 
     model = tf.keras.Model(inputs = inputs, outputs = [face_detection, mask_detection, age_detection])
     return model
@@ -151,11 +161,11 @@ def get_label(label):
     #else:
     #    age = label[2]-9
     #if only_age:
-    return {'age_detection': tf.reshape(tf.keras.backend.cast(label[2], tf.keras.backend.floatx()), (-1,1))}
+    #return {'age_detection': tf.reshape(tf.keras.backend.cast(label[2], tf.keras.backend.floatx()), (-1,1))}
     #else:
-     #   return {'face_detection': tf.reshape(tf.keras.backend.cast(label[0], tf.keras.backend.floatx()), (-1,1)),
-      #          'mask_detection':  tf.reshape(tf.keras.backend.cast(label[1], tf.keras.backend.floatx()), (-1,1)),
-       #         'age_detection': tf.reshape(tf.keras.backend.cast(age, tf.keras.backend.floatx()), (-1,1))} # -9 because there are no classes between age 0 and 9
+    return {'face_detection': tf.reshape(tf.keras.backend.cast(label[0], tf.keras.backend.floatx()), (-1,1)),
+               'mask_detection':  tf.reshape(tf.keras.backend.cast(label[1], tf.keras.backend.floatx()), (-1,1)),
+                'age_detection': tf.reshape(tf.keras.backend.cast(label[2], tf.keras.backend.floatx()), (-1,1))} # -9 because there are no classes between age 0 and 9
 
 ##
 @tf.function
@@ -184,12 +194,17 @@ def process_path(file_path,labels):
     return img, label
 
 ##
-data = pd.read_csv("images/featureTable2.csv")
-dataset = tf.data.Dataset.from_tensor_slices((data["image_path"], data[["face","mask","age"]]))
+data = pd.read_csv("images/featureTableTrain.csv")
+train = tf.data.Dataset.from_tensor_slices((data["image_path"], data[["face","mask","age"]]))
+train_ds = train.map(process_path)
+train_ds = train_ds.shuffle(16437, seed=123, reshuffle_each_iteration=False).batch(64)
 ##
-train_ds = dataset.map(process_path)
+data_val = pd.read_csv("images/featureTableVal.csv")
+val = tf.data.Dataset.from_tensor_slices((data_val["image_path"], data_val[["face","mask","age"]]))
+val_ds = val.map(process_path)
+val_ds = val_ds.shuffle(4097, seed=123, reshuffle_each_iteration=False).batch(64)
 ##
-train_ds = train_ds.shuffle(21403, seed=123, reshuffle_each_iteration=False).batch(64)
+
 ##
 train_age = data[data["age"] > 10]
 train_age = train_age[train_age["age"] <= 100]
@@ -200,7 +215,7 @@ train_ds_age = dataset_age.map(process_path)
 ##
 model = createModelV2()
 model = compileModelV2(model)
-model_history = model.fit(train_ds,epochs=10)
+model_history = model.fit(train_ds,epochs=10, validation_data=val_ds)
 #model_history = model.fit({'input':x_train},
 #                          {'face_detection': y_train_1,'mask_detection': y_train_2,'age_detection':y_train_3}, epochs=15)
 
