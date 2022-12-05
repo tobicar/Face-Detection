@@ -130,7 +130,7 @@ def customMSE(y_true,y_pred):
 def compileModel(model):
     model.compile(optimizer='adam', loss={'face_detection': 'binary_crossentropy',
                                           'mask_detection': 'binary_crossentropy',
-                                          'age_detection': customMSE},
+                                          'age_detection': "mse"},
                   loss_weights={'face_detection': 0.33, 'mask_detection':0.33, 'age_detection': 0.33},
                   metrics={'face_detection': 'accuracy',
                                           'mask_detection': 'accuracy',
@@ -154,6 +154,13 @@ labels_mask = np.array([0,1,0],dtype=np.float32)
 dataset = tf.data.Dataset.from_tensor_slices((x_train, {'face_detection':labels_face, 'mask_detection':labels_mask,'age_detection':labels_age})).batch(2)
 
 ##
+@tf.function
+def get_weights(weights):
+    return {'face_detection': tf.reshape(tf.keras.backend.cast(weights["face_detection"], tf.keras.backend.floatx()), (-1, 1)),
+            'mask_detection': tf.reshape(tf.keras.backend.cast(weights["mask_detection"], tf.keras.backend.floatx()), (-1, 1)),
+            'age_detection': tf.reshape(tf.keras.backend.cast(weights["age_detection"], tf.keras.backend.floatx()), (-1, 1))}
+
+
 @tf.function
 def get_label(label):
     #if label[2] == 0:
@@ -183,19 +190,23 @@ def decode_img(img_path):
     #return tf.keras.preprocessing.image.img_to_array(img)
 
 ##
-@tf.function
-def process_path(file_path,labels):
+def process_path(file_path,labels,sample_weights):
     label = get_label(labels)
     #label = {'face_detection': 1,'mask_detection': 2,'age_detection':3}
     # Load the raw data from the file as a string
     #img = tf.io.read_file(file_path)
     img = decode_img(file_path)
+    weight = get_weights(sample_weights)
     #img = file_path
-    return img, label
+    return img, label,weight
 
 ##
 data = pd.read_csv("images/featureTableTrain.csv")
-train = tf.data.Dataset.from_tensor_slices((data["image_path"], data[["face","mask","age"]]))
+data['face_weights'] = 1
+data['mask_weights'] = data['face']
+data['age_weights'] = data["age"].apply(lambda x: 1 if x >= 10 else 0)
+dict_weighted = {"face_detection": np.array(data['face_weights']), "mask_detection": np.array(data['mask_weights']), "age_detection": np.array(data['age_weights'])}
+train = tf.data.Dataset.from_tensor_slices((data["image_path"], data[["face","mask","age"]], dict_weighted))
 train_ds = train.map(process_path)
 train_ds = train_ds.shuffle(16437, seed=123, reshuffle_each_iteration=False).batch(64)
 ##
@@ -215,6 +226,9 @@ train_ds_age = dataset_age.map(process_path)
 ##
 model = createModelV2()
 model = compileModelV2(model)
+##
+model = createModel()
+model = compileModel(model)
 model_history = model.fit(train_ds,epochs=10, validation_data=val_ds)
 #model_history = model.fit({'input':x_train},
 #                          {'face_detection': y_train_1,'mask_detection': y_train_2,'age_detection':y_train_3}, epochs=15)
