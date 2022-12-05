@@ -116,7 +116,7 @@ def create_feature_table(directory, path):
     df = pd.DataFrame(data)
     df.to_csv(path + ".csv")
 
-## split Milestone 2
+## split for milestone 2
 
 split_image_directory_hierarchical("images/rawdata")
 create_feature_table("images/train2", "images/featureTableTrain")
