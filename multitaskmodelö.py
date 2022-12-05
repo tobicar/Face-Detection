@@ -5,6 +5,7 @@ import helper
 import numpy as np
 import datetime
 
+import matplotlib.pyplot as plt
 
 ##
 def add_face(x):
@@ -172,7 +173,8 @@ def compileModelV2(model):
 
 def customMSE(y_true, y_pred):
     mask = tf.keras.backend.cast(tf.keras.backend.not_equal(y_true, -1), tf.keras.backend.floatx())
-    return tf.keras.losses.mse(y_true * mask, y_pred * mask)
+    mask2 = tf.keras.backend.cast(tf.keras.backend.not_equal(y_true, 0), tf.keras.backend.floatx())
+    return tf.keras.losses.mse(y_true * mask * mask2, y_pred * mask * mask2)
 
 
 def compileModel(model, loss='huber'):
@@ -302,3 +304,34 @@ for multiple_dense_layers in MULTIPLE_DENSE_LAYERS:
 
                 # save model
                 model.save("saved_model/" + name)
+## generate History and plot it
+
+epochs_range = range(len(model_history.epoch))
+
+complete_loss = model_history.history['loss']
+face_detection_loss = model_history.history["face_detection_loss"]
+mask_detection_loss = model_history.history["mask_detection_loss"]
+age_detection_loss = model_history.history["age_detection_loss"]
+
+face_detection_accuracy = model_history.history['face_detection_accuracy']
+mask_detection_accuracy = model_history.history['mask_detection_accuracy']
+age_detection_mse = model_history.history["age_detection_mse"]
+
+plt.figure(figsize=(8, 8))
+plt.subplot(1, 2, 1)
+plt.plot(epochs_range, face_detection_accuracy, label='Face Accuracy')
+plt.plot(epochs_range, mask_detection_accuracy, label='Mask Accuracy')
+#plt.plot(epochs_range, age_detection_mse, label='Age MSE')
+#plt.plot(epochs_range, val_acc, label='Validation Accuracy')
+plt.legend(loc='lower right')
+plt.title('Training and Validation Accuracy')
+
+plt.subplot(1, 2, 2)
+plt.plot(epochs_range, complete_loss, label='Training Loss')
+plt.plot(epochs_range, face_detection_loss, label='Face Loss')
+plt.plot(epochs_range, mask_detection_loss, label='Mask Loss')
+plt.plot(epochs_range, age_detection_loss, label='Age Loss')
+#plt.plot(epochs_range, val_loss, label='Validation Loss')
+plt.legend(loc='upper right')
+plt.title('Training and Validation Loss')
+plt.show()
