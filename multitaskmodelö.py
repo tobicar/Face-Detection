@@ -4,6 +4,7 @@ import tensorflow as tf
 import helper
 import numpy as np
 import datetime
+from sklearn.utils import shuffle
 
 import matplotlib.pyplot as plt
 
@@ -14,7 +15,7 @@ def add_face(x):
     return greater
 
 
-def createModel(multiple_dense_layers=False, alpha=0.25):
+def createModel(multiple_dense_layers=False, alpha=0.25, dropout=0.2):
     """
     create multitask model with regression for age prediction
     :return: created model
@@ -35,10 +36,14 @@ def createModel(multiple_dense_layers=False, alpha=0.25):
 
     # age detecion
     face_detection_ground_truth = tf.keras.layers.Lambda(add_face)(face_detection)
+
     if multiple_dense_layers:
         feature_extractor = tf.keras.layers.Dense(1000, activation='relu')(feature_extractor)
+        feature_extractor = tf.keras.layers.Dropout(dropout)(feature_extractor)
         feature_extractor = tf.keras.layers.Dense(500, activation='relu')(feature_extractor)
+        feature_extractor = tf.keras.layers.Dropout(dropout)(feature_extractor)
     age_detection = tf.keras.layers.Dense(250, activation="relu")(feature_extractor)
+    age_detection = tf.keras.layers.Dropout(dropout)(age_detection)
     age_detection = tf.keras.layers.Dense(1)(age_detection)
     age_detection = tf.keras.layers.multiply([age_detection, face_detection_ground_truth], name="age_detection")
 
@@ -187,8 +192,7 @@ def decode_img(img_path):
     num_channels = 3
     img = tf.io.read_file(img_path)
     img = tf.image.decode_image(
-        img, channels=num_channels, expand_animations=False
-    )
+        img, channels=num_channels, expand_animations=False)
     img = tf.image.resize(img, image_size, method="bilinear")
     img.set_shape((image_size[0], image_size[1], num_channels))
     return img
@@ -210,6 +214,7 @@ def process_path(file_path,labels,sample_weights):
 ##
 def create_dataset(csv_path):
     table_data = pd.read_csv(csv_path)
+    table_data = shuffle(table_data, random_state=123)
     table_data['face_weights'] = 1
     table_data['mask_weights'] = table_data['face']
     table_data['age_weights'] = table_data["age"].apply(lambda x: 1 if x >= 10 else 0)
@@ -219,7 +224,8 @@ def create_dataset(csv_path):
     data = tf.data.Dataset.from_tensor_slices(
         (table_data["image_path"], table_data[["face", "mask", "age"]], dict_weighted))
     ds = data.map(process_path)
-    ds = ds.shuffle(ds.__len__().numpy(), seed=123, reshuffle_each_iteration=False).batch(32)
+    ds = ds.batch(32)
+    #ds = ds.shuffle(ds.__len__().numpy(), seed=123, reshuffle_each_iteration=False).batch(32)
     return ds
 
 
@@ -234,30 +240,37 @@ model_history = model.fit(train_ds, epochs=10, validation_data=val_ds)
 ##
 
 # Regression
-EPOCHS = [50]
-MULTIPLE_DENSE_LAYERS = [False]
-ALPHAS = [0.25] #, 0.5, 0.75, 1]
+EPOCHS = [100]
+MULTIPLE_DENSE_LAYERS = [False, True]
+ALPHAS = [0.25, 1.00]
 LOSS = ['mse', 'huber']
+DROPOUTS = [0.2, 0.8]
 
 for multiple_dense_layers in MULTIPLE_DENSE_LAYERS:
     for alpha in ALPHAS:
-        model = createModel(multiple_dense_layers, alpha)
-        for loss in LOSS:
-            model = compileModel(model, loss=loss)
-            for epochs in EPOCHS:
+        for dropout in DROPOUTS:
+            model = createModel(multiple_dense_layers, alpha=alpha, dropout=dropout)
+            for loss in LOSS:
+                model = compileModel(model, loss=loss)
+                for epochs in EPOCHS:
+                    name = "milestone2_regression_" + str(epochs) + "epochs_" +\
+                           str(alpha).split(".")[0] + str(alpha).split(".")[1] + "alpha_" + str(dropout) + "dropout_" +\
+                           loss
+                    if multiple_dense_layers:
+                        name += "_multipleDenseLayers"
 
-                log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-                tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+                    log_dir = "logs/fit/" + name + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
+                    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+                    tf.debugging.set_log_device_placement(True)
 
-                model_history = model.fit(train_ds, epochs=epochs, validation_data=val_ds, callbacks=[tensorboard_callback])
+                    model_history = model.fit(train_ds,
+                                              epochs=epochs,
+                                              validation_data=val_ds,
+                                              callbacks=[tensorboard_callback])
 
-                name = "milestone2_" + str(epochs) + "epochs_" +\
-                       str(alpha).split(".")[0] + str(alpha).split(".")[1] + "alpha_" + loss
-                if multiple_dense_layers:
-                    name += "_multipleDenseLayers"
+                    # save model
+                    model.save("saved_model/" + name)
 
-                # save model
-                model.save("saved_model/" + name)
 ## generate History and plot it
 
 epochs_range = range(len(model_history.epoch))
