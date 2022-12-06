@@ -124,52 +124,6 @@ def compile_model_age(model):
     return model
 
 ##
-def createModelV2():
-    """
-    create multitask model with classification for age prediction
-    :return: created model
-    """
-    model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=0.25)
-    model_pretrained.trainable = False
-    inputs = tf.keras.Input(shape=(224, 224, 3), name='input')
-    feature_extractor = tf.keras.applications.mobilenet.preprocess_input(inputs)
-    feature_extractor = model_pretrained(feature_extractor, training=False)
-    feature_extractor = tf.keras.layers.GlobalAveragePooling2D()(feature_extractor)
-    feature_extractor = tf.keras.layers.Dropout(0.2)(feature_extractor)
-
-    # face detection
-    face_detection = tf.keras.layers.Dense(1, activation="sigmoid", name='face_detection')(feature_extractor)
-
-    # mask detecion
-    mask_detection = tf.keras.layers.Dense(1, activation="sigmoid", name='mask_detection')(feature_extractor)
-
-    # age detecion
-    # one Class for no age = 0
-    # faces with unknown age = -1 --> ignored
-    #  91 classes for ages between 10 and 100
-    age_detection = tf.keras.layers.Dense(92, activation="softmax", name="age_detection")(feature_extractor)
-
-    model = tf.keras.Model(inputs=inputs, outputs=[face_detection, mask_detection, age_detection])
-    return model
-
-##
-
-def custom_accuracy(y_true,y_pred):
-    pass
-
-
-def compileModelV2(model):
-    model.compile(optimizer='adam', loss={'face_detection': 'binary_crossentropy',
-                                          'mask_detection': 'binary_crossentropy',
-                                          'age_detection': custom_sparse_categorical_crossentropy},
-                  loss_weights={'face_detection': 0.33, 'mask_detection': 0.33, 'age_detection': 0.33},
-                  metrics={'face_detection': 'accuracy',
-                           'mask_detection': 'accuracy',
-                           'age_detection': 'accuracy'})
-    return model
-
-
-##
 
 def customMSE(y_true, y_pred):
     mask = tf.keras.backend.cast(tf.keras.backend.not_equal(y_true, -1), tf.keras.backend.floatx())
