@@ -212,8 +212,10 @@ def process_path(file_path,labels,sample_weights):
 
 
 ##
-def create_dataset(csv_path):
+def create_dataset(csv_path,only_age=False):
     table_data = pd.read_csv(csv_path)
+    if only_age:
+        table_data = table_data[table_data["age"] >= 10]
     table_data = shuffle(table_data, random_state=123)
     table_data['face_weights'] = 1
     table_data['mask_weights'] = table_data['face']
@@ -226,11 +228,11 @@ def create_dataset(csv_path):
     ds = data.map(process_path)
     ds = ds.batch(32)
     #ds = ds.shuffle(ds.__len__().numpy(), seed=123, reshuffle_each_iteration=False).batch(32)
-    return ds
+    return ds,table_data
 
 
-train_ds = create_dataset("images/featureTableTrain.csv")
-val_ds = create_dataset("images/featureTableVal.csv")
+train_ds, train_table = create_dataset("images/featureTableTrain.csv")
+val_ds, val_table = create_dataset("images/featureTableVal.csv")
 
 ##
 model = createModel(multiple_dense_layers=True)
