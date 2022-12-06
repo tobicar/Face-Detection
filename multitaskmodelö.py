@@ -37,15 +37,14 @@ def createModel(multiple_dense_layers=False, alpha=0.25, dropout=0.2):
     # age detecion
     face_detection_ground_truth = tf.keras.layers.Lambda(add_face)(face_detection)
 
-    if multiple_dense_layers:
-        feature_extractor = tf.keras.layers.Dense(1000, activation='relu')(feature_extractor)
-        feature_extractor = tf.keras.layers.Dropout(dropout)(feature_extractor)
-        feature_extractor = tf.keras.layers.Dense(500, activation='relu')(feature_extractor)
-        feature_extractor = tf.keras.layers.Dropout(dropout)(feature_extractor)
-    age_detection = tf.keras.layers.Dense(250, activation="relu")(feature_extractor)
-    age_detection = tf.keras.layers.Dropout(dropout)(age_detection)
-    age_detection = tf.keras.layers.Dense(1)(age_detection)
-    age_detection = tf.keras.layers.multiply([age_detection, face_detection_ground_truth], name="age_detection")
+    feature_extractor_age = tf.keras.layers.Dense(1000, activation='relu')(feature_extractor)
+    feature_extractor_age = tf.keras.layers.Dropout(dropout)(feature_extractor_age)
+    feature_extractor_age = tf.keras.layers.Dense(500, activation='relu')(feature_extractor_age)
+    feature_extractor_age = tf.keras.layers.Dropout(dropout)(feature_extractor_age)
+    feature_extractor_age = tf.keras.layers.Dense(250, activation="relu")(feature_extractor_age)
+    feature_extractor_age = tf.keras.layers.Dropout(dropout)(feature_extractor_age)
+    feature_extractor_age = tf.keras.layers.Dense(1)(feature_extractor_age)
+    age_detection = tf.keras.layers.multiply([feature_extractor_age, face_detection_ground_truth], name="age_detection")
 
     model = tf.keras.Model(inputs=inputs, outputs=[face_detection, mask_detection, age_detection])
     return model
@@ -243,10 +242,10 @@ model_history = model.fit(train_ds, epochs=10, validation_data=val_ds)
 
 # Regression
 EPOCHS = [100]
-MULTIPLE_DENSE_LAYERS = [False, True]
-ALPHAS = [0.25, 1.00]
-LOSS = ['mse', 'huber']
-DROPOUTS = [0.2, 0.8]
+MULTIPLE_DENSE_LAYERS = [False]
+ALPHAS = [0.25]
+LOSS = ['mse']
+DROPOUTS = [0.2]
 
 for multiple_dense_layers in MULTIPLE_DENSE_LAYERS:
     for alpha in ALPHAS:
@@ -255,8 +254,8 @@ for multiple_dense_layers in MULTIPLE_DENSE_LAYERS:
             for loss in LOSS:
                 model = compileModel(model, loss=loss)
                 for epochs in EPOCHS:
-                    name = "milestone2_regression_" + str(epochs) + "epochs_" +\
-                           str(alpha).split(".")[0] + str(alpha).split(".")[1] + "alpha_" + str(dropout) + "dropout_" +\
+                    name = r"regression_" + str(epochs) + "epochs_" +\
+                           str(alpha) + "alpha_" + str(dropout) + "dropout_" +\
                            loss
                     if multiple_dense_layers:
                         name += "_multipleDenseLayers"
@@ -271,7 +270,7 @@ for multiple_dense_layers in MULTIPLE_DENSE_LAYERS:
                                               callbacks=[tensorboard_callback])
 
                     # save model
-                    model.save("saved_model/" + name)
+                    model.save("saved_model/Milestone3/" + name)
 
 ## generate History and plot it
 
