@@ -8,12 +8,12 @@ import datetime
 import matplotlib.pyplot as plt
 from sklearn.utils import shuffle
 ##
-def createModel():
+def createModel(alpha=0.25, dropout=0.2, large_version=False):
     """
     create multitask model with classification for age prediction
     :return: created model
     """
-    model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=0.25)
+    model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=alpha)
     model_pretrained.trainable = False
     inputs = tf.keras.Input(shape=(224, 224, 3), name='input')
     feature_extractor = tf.keras.applications.mobilenet.preprocess_input(inputs)
@@ -31,13 +31,19 @@ def createModel():
     # one Class for no age = 0
     # faces with unknown age = -1 --> ignored
     #  18 classes
-    age_detection = tf.keras.layers.Dense(1024, activation="relu",kernel_regularizer=tf.keras.regularizers.l2(0.01))(feature_extractor)
-    age_detection = tf.keras.layers.Dropout(0.2)(age_detection)
-    #age_detection = tf.keras.layers.BatchNormalization()(age_detection)
-    age_detection = tf.keras.layers.Dense(512, activation="relu",kernel_regularizer=tf.keras.regularizers.l2(0.01))(age_detection)
-    #age_detection = tf.keras.layers.BatchNormalization()(age_detection)
-    age_detection = tf.keras.layers.Dropout(0.2)(age_detection)
-    age_detection = tf.keras.layers.Dense(18, activation="softmax", name="age_detection")(age_detection)
+    if large_version:
+        age_detection = tf.keras.layers.Dense(1024, activation="relu",kernel_regularizer=tf.keras.regularizers.l2(0.01))(feature_extractor)
+        age_detection = tf.keras.layers.Dropout(dropout)(age_detection)
+        age_detection = tf.keras.layers.Dense(512, activation="relu",kernel_regularizer=tf.keras.regularizers.l2(0.01))(age_detection)
+        age_detection = tf.keras.layers.Dropout(dropout)(age_detection)
+        age_detection = tf.keras.layers.Dense(256, activation="relu", kernel_regularizer=tf.keras.regularizers.l2(0.01))(
+        age_detection)
+    else:
+        age_detection = tf.keras.layers.Dense(256, activation="relu",
+                                              kernel_regularizer=tf.keras.regularizers.l2(0.01))(
+            feature_extractor)
+    age_detection = tf.keras.layers.Dropout(dropout)(age_detection)
+    age_detection = tf.keras.layers.Dense(10, activation="softmax", name="age_detection")(age_detection)
 
     model = tf.keras.Model(inputs=inputs, outputs=[face_detection, mask_detection, age_detection])
     return model
@@ -96,44 +102,29 @@ def process_path(file_path,labels):
 
 ##
 def clusterAges(x):
-    if x < 10:
+    if x < 1:
         return -1
-    if 10 <= x < 15:
+    if 0 < x <= 10:
         return 0
-    if 15 <= x < 20:
+    if 10 < x <= 20:
         return 1
-    if 20 <= x < 25:
+    if 20 < x <= 30:
         return 2
-    if 25 <= x < 30:
+    if 30 < x <= 40:
         return 3
-    if 30 <= x < 35:
+    if 40 < x <= 50:
         return 4
-    if 35 <= x < 40:
+    if 50 < x <= 60:
         return 5
-    if 40 <= x < 45:
+    if 60 < x <= 70:
         return 6
-    if 45 <= x < 50:
+    if 70 < x <= 80:
         return 7
-    if 50 <= x < 55:
+    if 80 < x <= 90:
         return 8
-    if 55 <= x < 60:
+    if 90 < x <= 100:
         return 9
-    if 60 <= x < 65:
-        return 10
-    if 65 <= x < 70:
-        return 11
-    if 70 <= x < 75:
-        return 12
-    if 75 <= x < 80:
-        return 13
-    if 80 <= x < 85:
-        return 14
-    if 85 <= x < 90:
-        return 15
-    if 90 <= x < 95:
-        return 16
-    if 95 <= x <= 100:
-        return 17
+
 
 def create_dataset(csv_path,only_age=False):
     table_data = pd.read_csv(csv_path)
@@ -147,12 +138,42 @@ def create_dataset(csv_path,only_age=False):
     return ds, table_data
 
 ##
-train_ds,train_table = create_dataset("images/featureTableTrain.csv",only_age=True)
-val_ds,val_table = create_dataset("images/featureTableVal.csv", only_age=True)
+train_ds,train_table = create_dataset("images/featureTableTrain.csv")
+val_ds,val_table = create_dataset("images/featureTableVal.csv")
 
 ##
 model = createModel()
 model = compileModel(model)
+## generate classification trainings loop
+EPOCHS = [100]
+ALPHAS = [0.25]
+DROPOUTS = [0.2]
+LARGE_VERSION = [False,True]
+
+for large in LARGE_VERSION:
+    for alpha in ALPHAS:
+        for dropout in DROPOUTS:
+            for epochs in EPOCHS:
+                model = createModel(alpha=alpha, dropout=dropout, large_version=large)
+                model = compileModel(model)
+                name = r"classification" + str(epochs) + "epochs_" + \
+                       str(alpha) + "alpha_" + str(dropout) + "dropout"
+                log_dir = "logs/fit/" + name + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
+                tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+                tf.debugging.set_log_device_placement(True)
+                model_history = model.fit(train_ds,
+                                          epochs=epochs,
+                                          validation_data=val_ds,
+                                          callbacks=[tensorboard_callback])
+
+                # save model
+                model.save("saved_model/Milestone3/" + name)
+
+
+
+
+
+
 ##
 alpha = 0.25
 epochs = 10
@@ -195,4 +216,3 @@ def prepare(ds, shuffle=False, augment=False):
     return ds
 
 
-##

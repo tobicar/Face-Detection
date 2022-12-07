@@ -36,7 +36,7 @@ def createModel(alpha=0.25, dropout=0.2):
 
     # age detecion
     face_detection_ground_truth = tf.keras.layers.Lambda(add_face)(face_detection)
-    mask_detection_ground_truth = tf.keras.layers.Lambda(add_face)(mask_detection)
+    #mask_detection_ground_truth = tf.keras.layers.Lambda(add_face)(mask_detection)
 
     feature_extractor_age = tf.keras.layers.Dense(1000, activation='relu')(feature_extractor)
     feature_extractor_age = tf.keras.layers.Dropout(dropout)(feature_extractor_age)
@@ -142,6 +142,9 @@ def compileModel(model, loss='huber'):
                                           'age_detection': loss},
                   loss_weights={'face_detection': 0.33, 'mask_detection': 0.33, 'age_detection': 0.33},
                   metrics={'face_detection': 'accuracy',
+                           'mask_detection': 'accuracy',
+                           'age_detection': ['mae', 'mse']},
+                  weighted_metrics={'face_detection': 'accuracy',
                            'mask_detection': 'accuracy',
                            'age_detection': ['mae', 'mse']})
     return model
