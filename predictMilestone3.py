@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 ##
-PATH_TO_MODEL = "saved_model/milestone2_regression_100epochs_025alpha_0.2dropout_mse"
+PATH_TO_MODEL = "saved_model/Milestone3/regression_100epochs_0.25alpha_0.2dropoutmse"
 
 model = tf.keras.models.load_model(PATH_TO_MODEL)
 

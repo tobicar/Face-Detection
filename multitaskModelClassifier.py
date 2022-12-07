@@ -32,16 +32,13 @@ def createModel(alpha=0.25, dropout=0.2, large_version=False):
     # faces with unknown age = -1 --> ignored
     #  18 classes
     if large_version:
-        age_detection = tf.keras.layers.Dense(1024, activation="relu",kernel_regularizer=tf.keras.regularizers.l2(0.01))(feature_extractor)
+        age_detection = tf.keras.layers.Dense(1024, activation="relu")(feature_extractor)
         age_detection = tf.keras.layers.Dropout(dropout)(age_detection)
-        age_detection = tf.keras.layers.Dense(512, activation="relu",kernel_regularizer=tf.keras.regularizers.l2(0.01))(age_detection)
+        age_detection = tf.keras.layers.Dense(512, activation="relu")(age_detection)
         age_detection = tf.keras.layers.Dropout(dropout)(age_detection)
-        age_detection = tf.keras.layers.Dense(256, activation="relu", kernel_regularizer=tf.keras.regularizers.l2(0.01))(
-        age_detection)
+        age_detection = tf.keras.layers.Dense(256, activation="relu")(age_detection)
     else:
-        age_detection = tf.keras.layers.Dense(256, activation="relu",
-                                              kernel_regularizer=tf.keras.regularizers.l2(0.01))(
-            feature_extractor)
+        age_detection = tf.keras.layers.Dense(256, activation="relu",)(feature_extractor)
     age_detection = tf.keras.layers.Dropout(dropout)(age_detection)
     age_detection = tf.keras.layers.Dense(10, activation="softmax", name="age_detection")(age_detection)
 
@@ -139,7 +136,7 @@ def create_dataset(csv_path,only_age=False):
 
 ##
 train_ds,train_table = create_dataset("images/featureTableTrain.csv")
-val_ds,val_table = create_dataset("images/featureTableVal.csv")
+val_ds,val_table = create_dataset("images/featureTableVal.csv", only_age=True)
 
 ##
 model = createModel()

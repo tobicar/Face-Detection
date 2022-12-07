@@ -158,10 +158,10 @@ LARGE_VERSION = [True, False]
 for alpha in ALPHAS:
     for dropout in DROPOUTS:
         for largeVersion in LARGE_VERSION:
-            model = createModel(alpha=alpha, dropout=dropout, largeVersion=largeVersion)
             for loss in LOSS:
-                model = compileModel(model, loss=loss)
                 for epochs in EPOCHS:
+                    model = createModel(alpha=alpha, dropout=dropout, large_version=largeVersion)
+                    model = compileModel(model, loss=loss)
                     name = r"regression_" + str(epochs) + "epochs_" +\
                            str(alpha) + "alpha_" + str(dropout) + "dropout" + loss
                     if largeVersion:
