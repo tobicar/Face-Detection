@@ -130,7 +130,7 @@ def create_dataset(csv_path,only_age=False):
     table_data = pd.read_csv(csv_path)
     table_data['age_clustered'] = table_data["age"].apply(clusterAges)
     if only_age:
-        table_data = table_data[table_data["age"] >= 10]
+        table_data = table_data[table_data["age"] >= 1]
     table_data = shuffle(table_data, random_state=123)
     data = tf.data.Dataset.from_tensor_slices((table_data["image_path"], table_data[["face", "mask", "age_clustered"]]))
     ds = data.map(process_path)
@@ -148,7 +148,7 @@ model = compileModel(model)
 EPOCHS = [100]
 ALPHAS = [0.25]
 DROPOUTS = [0.2]
-LARGE_VERSION = [False,True]
+LARGE_VERSION = [False, True]
 
 for large in LARGE_VERSION:
     for alpha in ALPHAS:
@@ -170,25 +170,12 @@ for large in LARGE_VERSION:
                 model.save("saved_model/Milestone3/" + name)
 
 
-
-
-
-
-##
-alpha = 0.25
-epochs = 10
-log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-tf.debugging.set_log_device_placement(True)
-model_history = model.fit(train_ds, epochs=epochs, validation_data=val_ds, callbacks=[tensorboard_callback], )
-model.save("saved_model/" + "milestone2_classification_" + str(epochs) + "_epochs_" + str(alpha).split(".")[0] + str(alpha).split(".")[1] + "alpha")
-
 ## load test data
 ONLY_AGE = True
 test_table = pd.read_csv("images/featureTableVal.csv") #oder featureTableTest.csv
 test_table['age_clustered'] = test_table["age"].apply(clusterAges)
 if ONLY_AGE:
-    test_table = test_table[test_table["age"] >= 10]
+    test_table = test_table[test_table["age"] >= 1]
 test_table = shuffle(test_table,random_state=123)
 test_data = tf.data.Dataset.from_tensor_slices((test_table["image_path"], test_table[["face", "mask", "age_clustered"]]))
 ds_test = test_data.map(process_path)
