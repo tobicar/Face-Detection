@@ -15,7 +15,7 @@ def add_face(x):
     return greater
 
 
-def createModel(multiple_dense_layers=False, alpha=0.25, dropout=0.2):
+def createModel(alpha=0.25, dropout=0.2):
     """
     create multitask model with regression for age prediction
     :return: created model
@@ -36,6 +36,7 @@ def createModel(multiple_dense_layers=False, alpha=0.25, dropout=0.2):
 
     # age detecion
     face_detection_ground_truth = tf.keras.layers.Lambda(add_face)(face_detection)
+    mask_detection_ground_truth = tf.keras.layers.Lambda(add_face)(mask_detection)
 
     feature_extractor_age = tf.keras.layers.Dense(1000, activation='relu')(feature_extractor)
     feature_extractor_age = tf.keras.layers.Dropout(dropout)(feature_extractor_age)
@@ -232,9 +233,10 @@ def create_dataset(csv_path,only_age=False):
 
 train_ds, train_table = create_dataset("images/featureTableTrain.csv")
 val_ds, val_table = create_dataset("images/featureTableVal.csv")
+test_ds, test_table = create_dataset("images/featureTableTest.csv")
 
 ##
-model = createModel(multiple_dense_layers=True)
+model = createModel()
 model = compileModel(model)
 model_history = model.fit(train_ds, epochs=10, validation_data=val_ds)
 
@@ -242,35 +244,31 @@ model_history = model.fit(train_ds, epochs=10, validation_data=val_ds)
 
 # Regression
 EPOCHS = [100]
-MULTIPLE_DENSE_LAYERS = [False]
 ALPHAS = [0.25]
 LOSS = ['mse']
 DROPOUTS = [0.2]
 
-for multiple_dense_layers in MULTIPLE_DENSE_LAYERS:
-    for alpha in ALPHAS:
-        for dropout in DROPOUTS:
-            model = createModel(multiple_dense_layers, alpha=alpha, dropout=dropout)
-            for loss in LOSS:
-                model = compileModel(model, loss=loss)
-                for epochs in EPOCHS:
-                    name = r"regression_" + str(epochs) + "epochs_" +\
-                           str(alpha) + "alpha_" + str(dropout) + "dropout_" +\
-                           loss
-                    if multiple_dense_layers:
-                        name += "_multipleDenseLayers"
+for alpha in ALPHAS:
+    for dropout in DROPOUTS:
+        model = createModel(alpha=alpha, dropout=dropout)
+        for loss in LOSS:
+            model = compileModel(model, loss=loss)
+            for epochs in EPOCHS:
+                name = r"regression_" + str(epochs) + "epochs_" +\
+                       str(alpha) + "alpha_" + str(dropout) + "dropout_" +\
+                       loss + "_onlyFacesWithoutMask_onlyAge"
 
-                    log_dir = "logs/fit/" + name + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
-                    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-                    tf.debugging.set_log_device_placement(True)
+                log_dir = "logs/fit/" + name + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
+                tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+                tf.debugging.set_log_device_placement(True)
 
-                    model_history = model.fit(train_ds,
-                                              epochs=epochs,
-                                              validation_data=val_ds,
-                                              callbacks=[tensorboard_callback])
+                model_history = model.fit(train_ds,
+                                          epochs=epochs,
+                                          validation_data=val_ds,
+                                          callbacks=[tensorboard_callback])
 
-                    # save model
-                    model.save("saved_model/Milestone3/" + name)
+                # save model
+                model.save("saved_model/Milestone3/" + name)
 
 ## generate History and plot it
 
@@ -303,3 +301,14 @@ plt.plot(epochs_range, age_detection_loss, label='Age Loss')
 plt.legend(loc='upper right')
 plt.title('Training and Validation Loss')
 plt.show()
+
+## scatter plot
+model = tf.keras.models.load_model("saved_model/Milestone3/regression_100epochs_0.25alpha_0.2dropout_mse_onlyFacesWithoutMask_onlyAge")
+
+pred_train = model.predict(train_ds)
+pred_val = model.predict(val_ds)
+pred_test = model.predict(test_ds)
+plt.scatter(train_table["age"], pred_train[2])
+plt.scatter(train_table['age'], train_table['age'])
+plt.scatter(val_table["age"], pred_val[2])
+plt.scatter(val_table['age'], val_table['age'])

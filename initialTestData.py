@@ -59,11 +59,11 @@ def split_image_directory_hierarchical(directory):
         test = file_list[int(len(file_list) * 0.70):int(len(file_list) * 0.85)]
         val = file_list[int(len(file_list) * 0.85):]
         for file in train:
-            shutil.copy(subdirectory + "/" + file, "images/train2" + subdirectory[directory.__len__():] + "/" + file)
+            shutil.copy(subdirectory + "/" + file, "images/train3" + subdirectory[directory.__len__():] + "/" + file)
         for file in test:
-            shutil.copy(subdirectory + "/" + file, "images/test2" + subdirectory[directory.__len__():] + "/" + file)
+            shutil.copy(subdirectory + "/" + file, "images/test3" + subdirectory[directory.__len__():] + "/" + file)
         for file in val:
-            shutil.copy(subdirectory + "/" + file, "images/val2" + subdirectory[directory.__len__():] + "/" + file)
+            shutil.copy(subdirectory + "/" + file, "images/val3" + subdirectory[directory.__len__():] + "/" + file)
 
 
 def create_feature_table(directory, path):
@@ -119,6 +119,6 @@ def create_feature_table(directory, path):
 ## split for milestone 2
 
 split_image_directory_hierarchical("images/rawdata")
-create_feature_table("images/train2", "images/featureTableTrain")
-create_feature_table("images/test2", "images/featureTableTest")
-create_feature_table("images/val2", "images/featureTableVal")
+create_feature_table("images/train3", "images/featureTableTrain")
+create_feature_table("images/test3", "images/featureTableTest")
+create_feature_table("images/val3", "images/featureTableVal")
