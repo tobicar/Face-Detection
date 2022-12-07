@@ -15,7 +15,7 @@ def add_face(x):
     return greater
 
 
-def createModel(alpha=0.25, dropout=0.2):
+def createModel(alpha=0.25, dropout=0.2, large_version=False):
     """
     create multitask model with regression for age prediction
     :return: created model
@@ -37,95 +37,20 @@ def createModel(alpha=0.25, dropout=0.2):
     # age detecion
     face_detection_ground_truth = tf.keras.layers.Lambda(add_face)(face_detection)
     mask_detection_ground_truth = tf.keras.layers.Lambda(add_face)(mask_detection)
+    feature_extractor_age = feature_extractor
 
-    feature_extractor_age = tf.keras.layers.Dense(1000, activation='relu')(feature_extractor)
-    feature_extractor_age = tf.keras.layers.Dropout(dropout)(feature_extractor_age)
-    feature_extractor_age = tf.keras.layers.Dense(500, activation='relu')(feature_extractor_age)
-    feature_extractor_age = tf.keras.layers.Dropout(dropout)(feature_extractor_age)
-    feature_extractor_age = tf.keras.layers.Dense(250, activation="relu")(feature_extractor_age)
+    if large_version:
+        feature_extractor_age = tf.keras.layers.Dense(1024, activation='relu')(feature_extractor_age)
+        feature_extractor_age = tf.keras.layers.Dropout(dropout)(feature_extractor_age)
+        feature_extractor_age = tf.keras.layers.Dense(512, activation='relu')(feature_extractor_age)
+        feature_extractor_age = tf.keras.layers.Dropout(dropout)(feature_extractor_age)
+
+    feature_extractor_age = tf.keras.layers.Dense(256, activation="relu")(feature_extractor_age)
     feature_extractor_age = tf.keras.layers.Dropout(dropout)(feature_extractor_age)
     feature_extractor_age = tf.keras.layers.Dense(1)(feature_extractor_age)
     age_detection = tf.keras.layers.multiply([feature_extractor_age, face_detection_ground_truth], name="age_detection")
 
     model = tf.keras.Model(inputs=inputs, outputs=[face_detection, mask_detection, age_detection])
-    return model
-
-
-## create model for age prediction only
-def create_model_age_classification():
-    """
-    create model which predicts the age of a face by classification
-    :return: created model
-    """
-    # TODO: Klassifizierung für Altersklassen (z.B. 10-20, 20-30, etc.)
-    model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=0.25)
-    model_pretrained.trainable = False
-    inputs = tf.keras.Input(shape=(224, 224, 3), name='input')
-    feature_extractor = tf.keras.applications.mobilenet.preprocess_input(inputs)
-    feature_extractor = model_pretrained(feature_extractor, training=False)
-    feature_extractor = tf.keras.layers.GlobalAveragePooling2D()(feature_extractor)
-    feature_extractor = tf.keras.layers.Dropout(0.2)(feature_extractor)
-
-    age_detection = tf.keras.layers.Dense(102, activation="softmax", name="age_detection")(feature_extractor)
-    model = tf.keras.Model(inputs=inputs, outputs=age_detection)
-    return model
-
-
-def create_model_age_regression(alpha=0.25):
-    """
-    create model which predicts the age of a face by regression
-    :param alpha: parameter alpha of pretrained model (possible inputs: 0.25, 0.5, 0.75, 1)
-    :return: created model
-    """
-    # TODO: alpha variieren
-    # TODO: validierung hinzufügen
-    model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=alpha)
-    model_pretrained.trainable = False
-    inputs = tf.keras.Input(shape=(224, 224, 3), name='input')
-    feature_extractor = tf.keras.applications.mobilenet.preprocess_input(inputs)
-    feature_extractor = model_pretrained(feature_extractor, training=False)
-    feature_extractor = tf.keras.layers.GlobalAveragePooling2D()(feature_extractor)
-    feature_extractor = tf.keras.layers.Dropout(0.2)(feature_extractor)
-    # TODO: mehr Dense Layer
-    feature_extractor = tf.keras.layers.Dense(1000, activation='relu')(feature_extractor)
-    feature_extractor = tf.keras.layers.Dense(500, activation='relu')(feature_extractor)
-    feature_extractor = tf.keras.layers.Dense(250, activation='relu')(feature_extractor)
-    age_detection = tf.keras.layers.Dense(1, name="age_detection")(feature_extractor)
-    model = tf.keras.Model(inputs=inputs, outputs=age_detection)
-    return model
-
-
-def compile_model_age_regression(model, learning_rate=0.001):
-    """
-    compile regression model for age prediction only
-    :param model: model to compile
-    :param learning_rate: learning rate of optimizer
-    :return: compiled model
-    """
-    # TODO: learning rate
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate), loss='mse',
-                  metrics=['mse'])
-    return model
-
-
-def custom_sparse_categorical_crossentropy(y_true, y_pred):
-    """
-    create custom sparse categorical crossentropy
-    :param y_true:
-    :param y_pred:
-    :return: loss function
-    """
-    return tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred, ignore_class=-1)
-
-
-def compile_model_age(model):
-    """
-    compile classification model for age prediction only
-    :param model: model to compile
-    :return: compiled model
-    """
-    model.compile(optimizer='adam', loss=custom_sparse_categorical_crossentropy,
-                  metrics='accuracy')
     return model
 
 ##
@@ -145,24 +70,6 @@ def compileModel(model, loss='huber'):
                            'mask_detection': 'accuracy',
                            'age_detection': ['mae', 'mse']})
     return model
-
-
-##
-path3 = "images/test/no_face/00000000_(5).jpg"
-path = "images/test/face/10_0_0_20161220222308131.jpg"
-path2 = "/Users/tobias/Downloads/29177_1_mundschutz-typll-gruen_1.jpg"
-image = tf.keras.preprocessing.image.load_img(path, target_size=(224, 224))
-image2 = tf.keras.preprocessing.image.load_img(path2, target_size=(224, 224))
-image3 = tf.keras.preprocessing.image.load_img(path3, target_size=(224, 224))
-input_arr = tf.keras.preprocessing.image.img_to_array(image)
-input_arr2 = tf.keras.preprocessing.image.img_to_array(image2)
-input_arr3 = tf.keras.preprocessing.image.img_to_array(image3)
-x_train = np.array([input_arr, input_arr2, input_arr3])
-labels_face = np.array([1, 1, 0], dtype=np.float32)
-labels_age = np.array([10, 30, 0], dtype=np.float32)
-labels_mask = np.array([0, 1, 0], dtype=np.float32)
-dataset = tf.data.Dataset.from_tensor_slices(
-    (x_train, {'face_detection': labels_face, 'mask_detection': labels_mask, 'age_detection': labels_age})).batch(2)
 
 ##
 @tf.function
@@ -215,11 +122,11 @@ def process_path(file_path,labels,sample_weights):
 def create_dataset(csv_path,only_age=False):
     table_data = pd.read_csv(csv_path)
     if only_age:
-        table_data = table_data[table_data["age"] >= 10]
+        table_data = table_data[table_data["age"] >= 1]
     table_data = shuffle(table_data, random_state=123)
     table_data['face_weights'] = 1
     table_data['mask_weights'] = table_data['face']
-    table_data['age_weights'] = table_data["age"].apply(lambda x: 1 if x >= 10 else 0)
+    table_data['age_weights'] = table_data["age"].apply(lambda x: 1 if x >= 1 else 0)
     dict_weighted = {"face_detection": np.array(table_data['face_weights']),
                      "mask_detection": np.array(table_data['mask_weights']),
                      "age_detection": np.array(table_data['age_weights'])}
@@ -227,8 +134,7 @@ def create_dataset(csv_path,only_age=False):
         (table_data["image_path"], table_data[["face", "mask", "age"]], dict_weighted))
     ds = data.map(process_path)
     ds = ds.batch(32)
-    #ds = ds.shuffle(ds.__len__().numpy(), seed=123, reshuffle_each_iteration=False).batch(32)
-    return ds,table_data
+    return ds, table_data
 
 
 train_ds, train_table = create_dataset("images/featureTableTrain.csv")
@@ -247,28 +153,32 @@ EPOCHS = [100]
 ALPHAS = [0.25]
 LOSS = ['mse']
 DROPOUTS = [0.2]
+LARGE_VERSION = [True, False]
 
 for alpha in ALPHAS:
     for dropout in DROPOUTS:
-        model = createModel(alpha=alpha, dropout=dropout)
-        for loss in LOSS:
-            model = compileModel(model, loss=loss)
-            for epochs in EPOCHS:
-                name = r"regression_" + str(epochs) + "epochs_" +\
-                       str(alpha) + "alpha_" + str(dropout) + "dropout_" +\
-                       loss + "_onlyFacesWithoutMask_onlyAge"
+        for largeVersion in LARGE_VERSION:
+            model = createModel(alpha=alpha, dropout=dropout, largeVersion=largeVersion)
+            for loss in LOSS:
+                model = compileModel(model, loss=loss)
+                for epochs in EPOCHS:
+                    name = r"regression_" + str(epochs) + "epochs_" +\
+                           str(alpha) + "alpha_" + str(dropout) + "dropout" + loss
+                    if largeVersion:
+                        name += "_largeVersion"
 
-                log_dir = "logs/fit/" + name + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
-                tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-                tf.debugging.set_log_device_placement(True)
+                    log_dir = "logs/fit/" + name + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
+                    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+                    tf.debugging.set_log_device_placement(True)
 
-                model_history = model.fit(train_ds,
-                                          epochs=epochs,
-                                          validation_data=val_ds,
-                                          callbacks=[tensorboard_callback])
+                    model_history = model.fit(train_ds,
+                                              epochs=epochs,
+                                              validation_data=val_ds,
+                                              callbacks=[tensorboard_callback])
 
-                # save model
-                model.save("saved_model/Milestone3/" + name)
+                    # save model
+                    model.save("saved_model/Milestone3/" + name)
+
 
 ## generate History and plot it
 
@@ -303,12 +213,20 @@ plt.title('Training and Validation Loss')
 plt.show()
 
 ## scatter plot
-model = tf.keras.models.load_model("saved_model/Milestone3/regression_100epochs_0.25alpha_0.2dropout_mse_onlyFacesWithoutMask_onlyAge")
+model_large = tf.keras.models.load_model("saved_model/Milestone3/regression_100epochs_0.25alpha_0.2dropoutmse_largeVersion")
+model_small = tf.keras.models.load_model("saved_model/Milestone3/regression_100epochs_0.25alpha_0.2dropoutmse")
 
-pred_train = model.predict(train_ds)
-pred_val = model.predict(val_ds)
-pred_test = model.predict(test_ds)
-plt.scatter(train_table["age"], pred_train[2])
-plt.scatter(train_table['age'], train_table['age'])
-plt.scatter(val_table["age"], pred_val[2])
-plt.scatter(val_table['age'], val_table['age'])
+pred_small_train = model_small.predict(train_ds)
+pred_small_val = model_small.predict(val_ds)
+pred_small_test = model_small.predict(test_ds)
+pred_large_train = model_large.predict(train_ds)
+pred_large_val = model_large.predict(val_ds)
+pred_large_test = model_large.predict(test_ds)
+#plt.scatter(train_table["age"], pred_train[2], s=70, alpha=0.2)
+#plt.scatter(train_table['age'], train_table['age'], s=10)
+#plt.scatter(val_table["age"], pred_val[2])
+#plt.scatter(val_table['age'], val_table['age'])
+
+plt.scatter(test_table["age"], pred_small_test[2], s=70, alpha=0.2)
+plt.scatter(test_table['age'], test_table['age'], s=10)
+plt.scatter(test_table['age'], pred_large_test[2], s=70, alpha=0.2)
