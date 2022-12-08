@@ -32,13 +32,13 @@ def createModel(alpha=0.25, dropout=0.2, large_version=False):
     # faces with unknown age = -1 --> ignored
     #  18 classes
     if large_version:
-        age_detection = tf.keras.layers.Dense(1024, activation="relu")(feature_extractor)
+        age_detection = tf.keras.layers.Dense(1024, activation="relu", kernel_regularizer=tf.keras.regularizers.l2(0.01))(feature_extractor)
         age_detection = tf.keras.layers.Dropout(dropout)(age_detection)
-        age_detection = tf.keras.layers.Dense(512, activation="relu")(age_detection)
+        age_detection = tf.keras.layers.Dense(512, activation="relu", kernel_regularizer=tf.keras.regularizers.l2(0.01))(age_detection)
         age_detection = tf.keras.layers.Dropout(dropout)(age_detection)
-        age_detection = tf.keras.layers.Dense(256, activation="relu")(age_detection)
+        age_detection = tf.keras.layers.Dense(256, activation="relu", kernel_regularizer=tf.keras.regularizers.l2(0.01))(age_detection)
     else:
-        age_detection = tf.keras.layers.Dense(256, activation="relu",)(feature_extractor)
+        age_detection = tf.keras.layers.Dense(256, activation="relu")(feature_extractor)
     age_detection = tf.keras.layers.Dropout(dropout)(age_detection)
     age_detection = tf.keras.layers.Dense(10, activation="softmax", name="age_detection")(age_detection)
 
@@ -136,16 +136,19 @@ def create_dataset(csv_path,only_age=False):
 
 ##
 train_ds,train_table = create_dataset("images/featureTableTrain.csv")
-val_ds,val_table = create_dataset("images/featureTableVal.csv", only_age=True)
+val_ds,val_table = create_dataset("images/featureTableVal.csv")
+
+val_ds_age,val_table_age = create_dataset("images/featureTableVal.csv", only_age=True)
 
 ##
 model = createModel()
 model = compileModel(model)
+
 ## generate classification trainings loop
 EPOCHS = [100]
 ALPHAS = [0.25]
 DROPOUTS = [0.2]
-LARGE_VERSION = [False, True]
+LARGE_VERSION = [False]
 
 for large in LARGE_VERSION:
     for alpha in ALPHAS:
@@ -154,13 +157,15 @@ for large in LARGE_VERSION:
                 model = createModel(alpha=alpha, dropout=dropout, large_version=large)
                 model = compileModel(model)
                 name = r"classification" + str(epochs) + "epochs_" + \
-                       str(alpha) + "alpha_" + str(dropout) + "dropout"
+                       str(alpha) + "alpha_" + str(dropout) + "dropout_ValOnlyAge"
+                if large:
+                    name += "_largeVersion"
                 log_dir = "logs/fit/" + name + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
                 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
                 tf.debugging.set_log_device_placement(True)
                 model_history = model.fit(train_ds,
                                           epochs=epochs,
-                                          validation_data=val_ds,
+                                          validation_data=val_ds_age,
                                           callbacks=[tensorboard_callback])
 
                 # save model

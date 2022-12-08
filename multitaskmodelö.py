@@ -141,6 +141,8 @@ train_ds, train_table = create_dataset("images/featureTableTrain.csv")
 val_ds, val_table = create_dataset("images/featureTableVal.csv")
 test_ds, test_table = create_dataset("images/featureTableTest.csv")
 
+val_ds_age, val_table_age = create_dataset("images/featureTableVal.csv", only_age=True)
+
 ##
 model = createModel()
 model = compileModel(model)
@@ -153,7 +155,7 @@ EPOCHS = [100]
 ALPHAS = [0.25]
 LOSS = ['mse']
 DROPOUTS = [0.2]
-LARGE_VERSION = [True, False]
+LARGE_VERSION = [False, True]
 
 for alpha in ALPHAS:
     for dropout in DROPOUTS:
@@ -163,7 +165,9 @@ for alpha in ALPHAS:
                     model = createModel(alpha=alpha, dropout=dropout, large_version=largeVersion)
                     model = compileModel(model, loss=loss)
                     name = r"regression_" + str(epochs) + "epochs_" +\
-                           str(alpha) + "alpha_" + str(dropout) + "dropout" + loss
+                           str(alpha) + "alpha_" + str(dropout) + "dropout" + loss + "_ValOnlyAge"
+
+
                     if largeVersion:
                         name += "_largeVersion"
 
