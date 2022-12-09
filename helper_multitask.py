@@ -1,6 +1,9 @@
 import tensorflow as tf
 import helper
-
+from sklearn.utils import shuffle
+import numpy as np
+import datetime
+import pandas as pd
 
 def add_face(x):
     """
@@ -140,4 +143,58 @@ def process_path(file_path, labels):
     label = get_label(labels)
     img = decode_img(file_path)
     return img, label
+
+
+def create_categorical_dataset(model_version, category, csv_path):
+    table_data = pd.read_csv(csv_path)
+    if category == "mask":
+        table_data = table_data[table_data["face"] == 1]
+    elif category == "age":
+        table_data = table_data[table_data["age"] >= 1]
+    table_data = shuffle(table_data, random_state=123)
+    if model_version == "regression":
+        table_data['face_weights'] = 1
+        table_data['mask_weights'] = table_data['face']
+        table_data['age_weights'] = table_data["age"].apply(lambda x: 1 if x >= 1 else 0)
+        dict_weighted = {"face_detection": np.array(table_data['face_weights']),
+                         "mask_detection": np.array(table_data['mask_weights']),
+                         "age_detection": np.array(table_data['age_weights'])}
+        data = tf.data.Dataset.from_tensor_slices(
+            (table_data["image_path"], table_data[["face", "mask", "age"]], dict_weighted))
+    elif model_version == "classification":
+        data = tf.data.Dataset.from_tensor_slices(
+            (table_data["image_path"], table_data[["face", "mask", "age_clustered"]]))
+    else:
+        return
+    ds = data.map(process_path)
+    ds = ds.batch(32)
+    return ds, table_data
+
+
+def change_loss_function_while_training(version, path_to_train_csv, path_to_val_csv, alpha=0.25, dropout=0.2,
+                                        epochs=100, large_version=False, regularizer=False):
+    model = create_model(version, alpha, dropout, large_version, regularizer)
+
+    for category in ["face", "mask", "age"]:
+        model = compile_model(model,
+                              version=version,
+                              loss_weight_face=1 if category == "face" else 0,
+                              loss_weight_mask=1 if category == "mask" else 0,
+                              loss_weight_age=1 if category == "age" else 0)
+        train_ds = create_categorical_dataset(version, category, path_to_train_csv)
+        val_ds = create_categorical_dataset(version, category, path_to_val_csv)
+
+        name = version + str(epochs) + "epochs_" + str(alpha) + "alpha_" + str(dropout) + "dropout_ValOnlyAge"
+        if large_version:
+            name += "_largeVersion"
+        log_dir = "logs/fit/" + name + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+        tf.debugging.set_log_device_placement(True)
+        model_history = model.fit(train_ds,
+                                  epochs=epochs,
+                                  validation_data=val_ds,
+                                  callbacks=[tensorboard_callback])
+
+    # save model
+    model.save("saved_model/Milestone3/" + name)
 
