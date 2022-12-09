@@ -85,6 +85,22 @@ train_age_mae_regression_largeVersion = pd.read_csv(
 val_age_mae_regression_largeVersion = pd.read_csv(
     "presentation/milestone3/regression_ValOnlyAge_largeVersion/age_detection_mae_validation.csv")
 
+## age classification large-small plots
+fig, ax = plt.subplots()
+ax.plot(train_age_acc_classification["Step"], train_age_acc_classification["Value"], label="training")
+ax.plot(val_age_acc_classification["Step"], val_age_acc_classification["Value"], label="validation")
+ax.plot(train_age_acc_classification_largeVersion["Step"], train_age_acc_classification_largeVersion["Value"], label="training_large")
+ax.plot(val_age_acc_classification_largeVersion["Step"], val_age_acc_classification_largeVersion["Value"], label="validation_large")
+ax.set_xlabel("epoch")
+ax.set_ylabel("accuracy")
+plt.legend()
+plt.ylim([0.0, 0.5])
+plt.title("Train and Validation Accuracy")
+plt.show()
+plt.savefig("plots/milestone3/classification-small-large-accuracy.png")
+
+
+
 ## age classification accuracy multiple plots
 fig, ax = plt.subplots()
 ax.plot(train_age_acc_classification["Step"], train_age_acc_classification["Value"], label="training")
