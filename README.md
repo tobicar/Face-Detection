@@ -61,7 +61,7 @@ The dataset contains of 15.523 pictures with 6.941 faces and 8.582 no faces.
   - opens a file dialog where you can choose a image to do a prediction with
   - To change the model for prediction change the variable "PATH_TO_MODEL" to the corresponding model saved in [saved_model](saved_model)
   - after choosing a image the image will be displayed and the prediction is shown under the picture
-- [generatePlotsTensorboard.py](generatePlotsTensorboard.py):
+- [generatePlotsTensorboard.py](generatePlotsTensorboard_milestone2.py):
   - generate plots for the presentation from csv-training data, which can be exported from the tensorboard dashboard
   - to generate a plot change the file paths for the pd.read_csv
 - [evaluation.py](evaluation.py):
