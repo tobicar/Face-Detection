@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import datetime
 
 
-def load_model_for_training(version, classes, input_size=224, dropout=0.2, pre_trained=False, alpha=1,
+def load_model_for_training(version, classes, input_size=224, dropout=0.2, pre_trained=False, alpha=1.0,
                             depth_multiplier=1):
     """
     load MobileNet version to train on
@@ -236,3 +236,5 @@ def plot_nine_pictures_from_csv(path_to_csv):
             axs[i, j].set_title(subtext[k])
             k += 1
     plt.show()
+
+
