@@ -63,11 +63,11 @@ def create_model(version, alpha=0.25, dropout=0.2, large_version=False, regulari
                                                       0.01) if regularizer else None
                                                   )(feature_extractor_age)
     feature_extractor_age = tf.keras.layers.Dropout(dropout)(feature_extractor_age)
-    feature_extractor_age = tf.keras.layers.Dense(1)(feature_extractor_age)
 
     if version == "classification":
         age_detection = tf.keras.layers.Dense(10, activation="softmax", name="age_detection")(feature_extractor_age)
     elif version == "regression":
+        feature_extractor_age = tf.keras.layers.Dense(1)(feature_extractor_age)
         face_detection_ground_truth = tf.keras.layers.Lambda(add_face)(face_detection)
         age_detection = tf.keras.layers.multiply([feature_extractor_age, face_detection_ground_truth],
                                                  name="age_detection")
@@ -174,6 +174,9 @@ def create_categorical_dataset(model_version, category, csv_path):
 def change_loss_function_while_training(version, path_to_train_csv, path_to_val_csv, alpha=0.25, dropout=0.2,
                                         epochs=100, large_version=False, regularizer=False):
     model = create_model(version, alpha, dropout, large_version, regularizer)
+    name = version + str(epochs) + "epochs_" + str(alpha) + "alpha_" + str(dropout) + "dropout_categoricalLoss"
+    if large_version:
+        name += "_largeVersion"
 
     for category in ["face", "mask", "age"]:
         model = compile_model(model,
@@ -184,10 +187,7 @@ def change_loss_function_while_training(version, path_to_train_csv, path_to_val_
         train_ds = create_categorical_dataset(version, category, path_to_train_csv)
         val_ds = create_categorical_dataset(version, category, path_to_val_csv)
 
-        name = version + str(epochs) + "epochs_" + str(alpha) + "alpha_" + str(dropout) + "dropout_ValOnlyAge"
-        if large_version:
-            name += "_largeVersion"
-        log_dir = "logs/fit/" + name + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
+        log_dir = "logs/fit/" + name + category + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
         tf.debugging.set_log_device_placement(True)
         model_history = model.fit(train_ds,
