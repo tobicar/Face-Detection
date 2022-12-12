@@ -18,13 +18,13 @@ def add_face(x):
 
 def create_model(version, alpha=0.25, dropout=0.2, large_version=False, regularizer=False):
     """
-
-    :param version:
-    :param alpha:
-    :param dropout:
-    :param large_version:
-    :param regularizer:
-    :return:
+    function generates a keras model for training with the defined parameters
+    :param version: possible versions are regression or classification
+    :param alpha: parameter for the feature extractor (untrainable mobilenetv1)
+    :param dropout: percentage of dropout for the dropout layers in the model
+    :param large_version: true or false: large version contains a bigger head with more dense and Dropout layers for the age classification or age regression problem
+    :param regularizer: true or false: decides if the age dense layers have a L2-regularization kernel or not
+    :return: the generated keras model
     """
     model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=alpha)
     model_pretrained.trainable = False
@@ -80,13 +80,13 @@ def create_model(version, alpha=0.25, dropout=0.2, large_version=False, regulari
 
 def compile_model(model, version, loss_weight_face=0.33, loss_weight_mask=0.33, loss_weight_age=0.33):
     """
-
-    :param model:
-    :param version:
-    :param loss_weight_face:
-    :param loss_weight_mask:
-    :param loss_weight_age:
-    :return:
+    function compiles the specified model (classification or regression) with different loss_weights
+    :param model: the generated model from the create_model function
+    :param version: regression or classification
+    :param loss_weight_face: weight of the face loss for the total loss
+    :param loss_weight_mask: weight of the mask loss for the total loss
+    :param loss_weight_age: weight of the age loss for the total loss
+    :return: the compiled keras model
     """
     model.compile(optimizer='adam', loss={'face_detection': 'binary_crossentropy',
                                           'mask_detection': 'binary_crossentropy',
