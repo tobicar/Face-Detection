@@ -7,9 +7,9 @@ import pandas as pd
 
 def add_face(x):
     """
-
-    :param x:
-    :return:
+    Function for Lambda Layer used in regression Model
+    :param x: probability if picture contains a face
+    :return: if x greater than 0.5 -> returns 1 otherwise 0
     """
     greater = tf.keras.backend.greater_equal(x, 0.5)  # will return boolean values
     greater = tf.keras.backend.cast(greater, dtype=tf.keras.backend.floatx())  # will convert bool to 0 and 1
@@ -104,6 +104,38 @@ def compile_model(model, version, loss_weight_face=0.33, loss_weight_mask=0.33, 
 ## create label for multitask
 
 @tf.function
+def get_weights(weights):
+    return {'face_detection': tf.reshape(tf.keras.backend.cast(weights["face_detection"], tf.keras.backend.floatx()), (-1, 1)),
+            'mask_detection': tf.reshape(tf.keras.backend.cast(weights["mask_detection"], tf.keras.backend.floatx()), (-1, 1)),
+            'age_detection': tf.reshape(tf.keras.backend.cast(weights["age_detection"], tf.keras.backend.floatx()), (-1, 1))}
+
+
+def cluster_ages(x):
+    if x < 1:
+        return -1
+    if 0 < x <= 10:
+        return 0
+    if 10 < x <= 20:
+        return 1
+    if 20 < x <= 30:
+        return 2
+    if 30 < x <= 40:
+        return 3
+    if 40 < x <= 50:
+        return 4
+    if 50 < x <= 60:
+        return 5
+    if 60 < x <= 70:
+        return 6
+    if 70 < x <= 80:
+        return 7
+    if 80 < x <= 90:
+        return 8
+    if 90 < x <= 100:
+        return 9
+
+
+@tf.function
 def get_label(label):
     """
 
@@ -145,7 +177,14 @@ def process_path(file_path, labels):
     return img, label
 
 
-def create_categorical_dataset(model_version, category, csv_path):
+def process_path_weighted(file_path, labels, sample_weights):
+    label = get_label(labels)
+    img = decode_img(file_path)
+    weight = get_weights(sample_weights)
+    return img, label, weight
+
+
+def create_categorical_dataset(model_version, category, csv_path,weighted_regression=True):
     table_data = pd.read_csv(csv_path)
     if category == "mask":
         table_data = table_data[table_data["face"] == 1]
@@ -156,12 +195,20 @@ def create_categorical_dataset(model_version, category, csv_path):
         table_data['face_weights'] = 1
         table_data['mask_weights'] = table_data['face']
         table_data['age_weights'] = table_data["age"].apply(lambda x: 1 if x >= 1 else 0)
-        dict_weighted = {"face_detection": np.array(table_data['face_weights']),
+        if weighted_regression:
+            dict_weighted = {"face_detection": np.array(table_data['face_weights']),
                          "mask_detection": np.array(table_data['mask_weights']),
                          "age_detection": np.array(table_data['age_weights'])}
-        data = tf.data.Dataset.from_tensor_slices(
-            (table_data["image_path"], table_data[["face", "mask", "age"]], dict_weighted))
+            data = tf.data.Dataset.from_tensor_slices(
+                (table_data["image_path"], table_data[["face", "mask", "age"]], dict_weighted))
+            ds = data.map(process_path_weighted)
+            ds = ds.batch(32)
+            return ds, table_data
+        else:
+            data = tf.data.Dataset.from_tensor_slices(
+                (table_data["image_path"], table_data[["face", "mask", "age"]]))
     elif model_version == "classification":
+        table_data['age_clustered'] = table_data["age"].apply(cluster_ages)
         data = tf.data.Dataset.from_tensor_slices(
             (table_data["image_path"], table_data[["face", "mask", "age_clustered"]]))
     else:
@@ -172,11 +219,14 @@ def create_categorical_dataset(model_version, category, csv_path):
 
 
 def change_loss_function_while_training(version, path_to_train_csv, path_to_val_csv, alpha=0.25, dropout=0.2,
-                                        epochs=100, large_version=False, regularizer=False):
+                                        epochs_face=10, epochs_mask=10, epochs_age=100, large_version=False, regularizer=False):
     model = create_model(version, alpha, dropout, large_version, regularizer)
-    name = version + str(epochs) + "epochs_" + str(alpha) + "alpha_" + str(dropout) + "dropout_categoricalLoss"
+    time = datetime.datetime.now().strftime("%Y%m%d-%H%M_")
+    name = time + version + str(epochs_face) + "epochsface_" + str(epochs_mask) + "epochsmask_" + str(epochs_age) + "epochsage_" + str(alpha) + "alpha_" + str(dropout) + "dropout"
     if large_version:
         name += "_largeVersion"
+    if regularizer:
+        name += "_l2"
 
     for category in ["face", "mask", "age"]:
         model = compile_model(model,
@@ -184,12 +234,18 @@ def change_loss_function_while_training(version, path_to_train_csv, path_to_val_
                               loss_weight_face=1 if category == "face" else 0,
                               loss_weight_mask=1 if category == "mask" else 0,
                               loss_weight_age=1 if category == "age" else 0)
-        train_ds = create_categorical_dataset(version, category, path_to_train_csv)
-        val_ds = create_categorical_dataset(version, category, path_to_val_csv)
+        train_ds, _ = create_categorical_dataset(version, category, path_to_train_csv, weighted_regression=False)
+        val_ds, _ = create_categorical_dataset(version, category, path_to_val_csv, weighted_regression=False)
 
         log_dir = "logs/fit/" + name + category + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
         tf.debugging.set_log_device_placement(True)
+        if category == "face":
+            epochs = epochs_face
+        elif category == "mask":
+            epochs = epochs_mask
+        elif category == "age":
+            epochs = epochs_age
         model_history = model.fit(train_ds,
                                   epochs=epochs,
                                   validation_data=val_ds,

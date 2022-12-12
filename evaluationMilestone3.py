@@ -7,6 +7,10 @@ import os
 import time
 from sklearn.utils import shuffle
 import numpy as np
+
+import helper_multitask
+
+
 ##
 def clusterAges(x):
     if x < 1:
@@ -63,7 +67,7 @@ def process_path(file_path,labels,sample_weights):
     label = get_label(labels)
     img = decode_img(file_path)
     weight = get_weights(sample_weights)
-    return img, label,weight
+    return img, label, weight
 
 def process_path_classification(file_path,labels):
     label = get_label(labels)
@@ -114,7 +118,9 @@ test_ds_mask, test_table_mask = create_dataset_regression("images/featureTableTe
 test_ds_face_class, test_table_face_class = create_dataset_classification("images/featureTableTest.csv")
 test_ds_age_class, test_table_age_class = create_dataset_classification("images/featureTableTest.csv", only_age=True)
 test_ds_mask_class, test_table_mask_class = create_dataset_classification("images/featureTableTest.csv", only_mask=True)
+##
 
+helper_multitask.create_categorical_dataset()
 
 ## evaluate through all models
 
