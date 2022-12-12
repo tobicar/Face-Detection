@@ -105,12 +105,22 @@ def compile_model(model, version, loss_weight_face=0.33, loss_weight_mask=0.33, 
 
 @tf.function
 def get_weights(weights):
+    '''
+    converts the given weighs into a dictionary with a specific format tensorflow.dataset can understand
+    :param weights: arrays with weights
+    :return: formatted dictionary
+    '''
     return {'face_detection': tf.reshape(tf.keras.backend.cast(weights["face_detection"], tf.keras.backend.floatx()), (-1, 1)),
             'mask_detection': tf.reshape(tf.keras.backend.cast(weights["mask_detection"], tf.keras.backend.floatx()), (-1, 1)),
             'age_detection': tf.reshape(tf.keras.backend.cast(weights["age_detection"], tf.keras.backend.floatx()), (-1, 1))}
 
 
 def cluster_ages(x):
+    '''
+    cluster the given age into 10 years intervalls
+    :param x: age of the person
+    :return:  age clustered
+    '''
     if x < 1:
         return -1
     if 0 < x <= 10:
@@ -138,9 +148,9 @@ def cluster_ages(x):
 @tf.function
 def get_label(label):
     """
-
-    :param label:
-    :return:
+    formats the ground-truth values in a dictionary tensorflow.datasets can understand
+    :param label: arrays of the ground-truth values of the picture for the given tasks
+    :return: formatted dictionary
     """
     return {'face_detection': tf.reshape(tf.keras.backend.cast(label[0], tf.keras.backend.floatx()), (-1, 1)),
             'mask_detection': tf.reshape(tf.keras.backend.cast(label[1], tf.keras.backend.floatx()), (-1, 1)),
