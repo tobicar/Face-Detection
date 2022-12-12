@@ -160,9 +160,9 @@ def get_label(label):
 @tf.function
 def decode_img(img_path):
     """
-
-    :param img_path:
-    :return:
+    function read image from filepath and format it into a tensor
+    :param img_path: filepath of the image
+    :return: decodes image as tensor
     """
     image_size = (224, 224)
     num_channels = 3
@@ -177,10 +177,10 @@ def decode_img(img_path):
 
 def process_path(file_path, labels):
     """
-
-    :param file_path:
-    :param labels:
-    :return:
+    function reads image from filesystem and returns it in specific format
+    :param file_path: path of the image file
+    :param labels: ground-truth values for the image
+    :return: tupel of the image and the label dictionary
     """
     label = get_label(labels)
     img = decode_img(file_path)
@@ -188,6 +188,13 @@ def process_path(file_path, labels):
 
 
 def process_path_weighted(file_path, labels, sample_weights):
+    '''
+    function reads image from filesystem and returns it in specific format
+    :param file_path: path of the image file
+    :param labels: ground-truth values for the image
+    :param sample_weights:
+    :return: image, label dictionary and sample_weights for the labels
+    '''
     label = get_label(labels)
     img = decode_img(file_path)
     weight = get_weights(sample_weights)
@@ -195,6 +202,14 @@ def process_path_weighted(file_path, labels, sample_weights):
 
 
 def create_categorical_dataset(model_version, category, csv_path,weighted_regression=True):
+    '''
+    function creates dataset that can be used for training, validation and testing
+    :param model_version: if the model is a regression or classification model
+    :param category: possible choices: face,mask,age; if the dataset should only contain batches with specific labels (no missing values)
+    :param csv_path: path to the csv file, which contains the information for the images
+    :param weighted_regression: if sample weights for the regression model should be generated
+    :return: tuple of the dataset and a pandas datatable with images information
+    '''
     table_data = pd.read_csv(csv_path)
     if category == "mask":
         table_data = table_data[table_data["face"] == 1]
@@ -230,6 +245,21 @@ def create_categorical_dataset(model_version, category, csv_path,weighted_regres
 
 def change_loss_function_while_training(version, path_to_train_csv, path_to_val_csv, alpha=0.25, dropout=0.2,
                                         epochs_face=10, epochs_mask=10, epochs_age=100, large_version=False, regularizer=False):
+    '''
+    function creates, compile and train a model with specific parameters, while changing the loss_weights during training.
+    After training the model gets saved with a generated name to saved_model/Milestone3
+    :param version: classification or regression model
+    :param path_to_train_csv: path to the csv file containing information about the train images
+    :param path_to_val_csv: path to the csv file containing information about the validation images
+    :param alpha: alpah paramter of the feature extractor (mobilenetv1)
+    :param dropout: dropout for the age task
+    :param epochs_face: number of training epochs for the face task
+    :param epochs_mask: number of training epochs for the mask task
+    :param epochs_age: number of training epochs for the age task
+    :param large_version: true or false: whether if the age head contains more dense and dropout layers or not
+    :param regularizer: true or false: whether the dense layers in the age task contains l2 kernel regularization or not
+    :return:
+    '''
     model = create_model(version, alpha, dropout, large_version, regularizer)
     time = datetime.datetime.now().strftime("%Y%m%d-%H%M_")
     name = time + version + str(epochs_face) + "epochsface_" + str(epochs_mask) + "epochsmask_" + str(epochs_age) + "epochsage_" + str(alpha) + "alpha_" + str(dropout) + "dropout"
