@@ -8,6 +8,12 @@ from sklearn.utils import shuffle
 
 ##
 def clusterAges(x):
+    """
+    function clusters ages into 10 classes.
+    In class -1 are all images with no ages given.
+    :param x: age of face in image
+    :return: class id
+    """
     if x < 1:
         return -1
     if 0 < x <= 10:
@@ -33,18 +39,29 @@ def clusterAges(x):
 
 
 def create_dataset(csv_path, only_age=False):
+    """
+    function creates dataset from table given as csv file
+    :param csv_path: path to csv file
+    :param only_age: bool to only extract data with given age
+    :return: dataset and data as table
+    """
+    # read csv file
     table_data = pd.read_csv(csv_path)
+    # add new column (age_clustered) to table of csv file which includes the class created in clusterAges(x)
     table_data['age_clustered'] = table_data["age"].apply(clusterAges)
     if only_age:
         table_data = table_data[table_data["age"] >= 1]
+
+    # transform data table to tensorflow dataset
     table_data = shuffle(table_data, random_state=123)
     data = tf.data.Dataset.from_tensor_slices((table_data["image_path"], table_data[["face", "mask", "age_clustered"]]))
     ds = data.map(helper_multitask.process_path)
     ds = ds.batch(32)
+
     return ds, table_data
 
 
-##
+## generate datasets
 train_ds, train_table = create_dataset("images/featureTableTrain.csv")
 val_ds, val_table = create_dataset("images/featureTableVal.csv")
 

@@ -11,35 +11,43 @@ import helper_multitask
 ##
 def create_dataset(csv_path, only_age=False):
     """
-
-    :param csv_path:
-    :param only_age:
-    :return:
+    function creates dataset from table given as csv file
+    :param csv_path: path to csv file
+    :param only_age: bool to only extract data with given age
+    :return: dataset and data as table
     """
+    # read csv file
     table_data = pd.read_csv(csv_path)
     if only_age:
+        # extract only data with given age
         table_data = table_data[table_data["age"] >= 1]
+
     table_data = shuffle(table_data, random_state=123)
+    # create new columns in data table with weights of data in each row
     table_data['face_weights'] = 1
     table_data['mask_weights'] = table_data['face']
     table_data['age_weights'] = table_data["age"].apply(lambda x: 1 if x >= 1 else 0)
+    # create dictionary of all weights
     dict_weighted = {"face_detection": np.array(table_data['face_weights']),
                      "mask_detection": np.array(table_data['mask_weights']),
                      "age_detection": np.array(table_data['age_weights'])}
+    # transform data table to tensorflow dataset
     data = tf.data.Dataset.from_tensor_slices(
         (table_data["image_path"], table_data[["face", "mask", "age"]], dict_weighted))
     ds = data.map(helper_multitask.process_path)
     ds = ds.batch(32)
+
     return ds, table_data
 
 
+# generate datasets
 train_ds, train_table = create_dataset("images/featureTableTrain.csv")
 val_ds, val_table = create_dataset("images/featureTableVal.csv")
 test_ds, test_table = create_dataset("images/featureTableTest.csv")
 
 val_ds_age, val_table_age = create_dataset("images/featureTableVal.csv", only_age=True)
 
-##
+## generate regression training loop
 
 # Regression
 EPOCHS = [100]
@@ -109,7 +117,7 @@ def plot_history(model_history):
     plt.show()
 
 
-## scatter plot
+## generate scatter plot
 model_large = tf.keras.models.load_model(
     "saved_model/Milestone3/regression_100epochs_0.25alpha_0.2dropoutmse_largeVersion")
 model_small = tf.keras.models.load_model("saved_model/Milestone3/regression_100epochs_0.25alpha_0.2dropoutmse")
