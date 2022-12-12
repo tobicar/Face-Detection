@@ -11,7 +11,7 @@ import numpy as np
 import helper_multitask
 
 ##
-test_ds_face, test_table_face = helper_multitask.create_categorical_dataset("regression", "face", "images/featureTableTest.csv")
+test_ds_face, test_table_face = helper_multitask.create_dataset("regression", "face", "images/featureTableTest.csv")
 test_ds_age, test_table_age = create_dataset_regression("images/featureTableTest.csv", only_age=True)
 test_ds_mask, test_table_mask = create_dataset_regression("images/featureTableTest.csv", only_mask=True)
 
@@ -20,7 +20,7 @@ test_ds_age_class, test_table_age_class = create_dataset_classification("images/
 test_ds_mask_class, test_table_mask_class = create_dataset_classification("images/featureTableTest.csv", only_mask=True)
 ##
 
-helper_multitask.create_categorical_dataset()
+helper_multitask.create_dataset()
 
 ## evaluate through all models
 

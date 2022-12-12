@@ -201,7 +201,7 @@ def process_path_weighted(file_path, labels, sample_weights):
     return img, label, weight
 
 
-def create_categorical_dataset(model_version, category, csv_path,weighted_regression=True):
+def create_dataset(model_version, category, csv_path, weighted_regression=True):
     '''
     function creates dataset that can be used for training, validation and testing
     :param model_version: if the model is a regression or classification model
@@ -274,8 +274,8 @@ def change_loss_function_while_training(version, path_to_train_csv, path_to_val_
                               loss_weight_face=1 if category == "face" else 0,
                               loss_weight_mask=1 if category == "mask" else 0,
                               loss_weight_age=1 if category == "age" else 0)
-        train_ds, _ = create_categorical_dataset(version, category, path_to_train_csv, weighted_regression=False)
-        val_ds, _ = create_categorical_dataset(version, category, path_to_val_csv, weighted_regression=False)
+        train_ds, _ = create_dataset(version, category, path_to_train_csv, weighted_regression=False)
+        val_ds, _ = create_dataset(version, category, path_to_val_csv, weighted_regression=False)
 
         log_dir = "logs/fit/" + name + category + datetime.datetime.now().strftime("-%Y%m%d-%H%M%S")
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
