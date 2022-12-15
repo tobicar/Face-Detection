@@ -7,8 +7,9 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import helper_multitask
 ##
-PATH_TO_MODEL = "saved_model/Milestone3/regression_100epochs_0.25alpha_0.2dropoutmse"
+PATH_TO_MODEL = "saved_model/Milestone3/20221212-0010_regression10epochsface_10epochsmask_50epochsage_0.25alpha_0.5dropout"
 
 model = tf.keras.models.load_model(PATH_TO_MODEL)
 

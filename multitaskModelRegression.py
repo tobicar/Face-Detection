@@ -48,9 +48,12 @@ test_ds, test_table = create_dataset("images/featureTableTest.csv")
 val_ds_age, val_table_age = create_dataset("images/featureTableVal.csv", only_age=True)
 
 ## generate regression training loop
+train_ds, train_table = helper_multitask.create_dataset("regression","face","images/featureTableTrain.csv",weighted_regression=True)
+val_ds_age, val_table_age = helper_multitask.create_dataset("regression","age","images/featureTableVal.csv")
 
+##
 # Regression
-EPOCHS = [100]
+EPOCHS = [50]
 ALPHAS = [0.25]
 LOSS = ['mse']
 DROPOUTS = [0.2]
@@ -66,7 +69,8 @@ for alpha in ALPHAS:
                                                           dropout=dropout,
                                                           large_version=largeVersion)
                     model = helper_multitask.compile_model(model, "regression")
-                    name = r"regression_" + str(epochs) + "epochs_" + \
+                    time = datetime.datetime.now().strftime("%Y%m%d-%H%M_")
+                    name = r"" + time + "regression_" + str(epochs) + "epochs_" + \
                            str(alpha) + "alpha_" + str(dropout) + "dropout" + loss + "_ValOnlyAge"
 
                     if largeVersion:
@@ -78,7 +82,7 @@ for alpha in ALPHAS:
 
                     model_history = model.fit(train_ds,
                                               epochs=epochs,
-                                              validation_data=val_ds,
+                                              validation_data=val_ds_age,
                                               callbacks=[tensorboard_callback])
 
                     # save model
