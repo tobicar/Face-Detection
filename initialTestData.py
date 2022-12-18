@@ -81,7 +81,7 @@ def create_feature_table(directory, path):
             continue
         folder_list.append(directory + "/" + folder)
     for subdirectory in folder_list:
-        if folder == ".DS_Store":
+        if subdirectory == ".DS_Store":
             continue
         for file in os.listdir(subdirectory):
             if file == ".DS_Store":

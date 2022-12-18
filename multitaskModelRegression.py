@@ -39,19 +39,12 @@ def create_dataset(csv_path, only_age=False):
 
     return ds, table_data
 
-##
-# generate datasets
-train_ds, train_table = create_dataset("images/featureTableTrain.csv")
-val_ds, val_table = create_dataset("images/featureTableVal.csv")
-test_ds, test_table = create_dataset("images/featureTableTest.csv")
-
-val_ds_age, val_table_age = create_dataset("images/featureTableVal.csv", only_age=True)
 
 ## generate regression training loop
-train_ds, train_table = helper_multitask.create_dataset("regression","face","images/featureTableTrain.csv",weighted_regression=True)
-val_ds_age, val_table_age = helper_multitask.create_dataset("regression","age","images/featureTableVal.csv")
+train_ds, train_table = helper_multitask.create_dataset("regression", "face", "images/featureTableTrain.csv",
+                                                        weighted_regression=True)
+val_ds_age, val_table_age = helper_multitask.create_dataset("regression", "age", "images/featureTableVal.csv")
 
-##
 # Regression
 EPOCHS = [50]
 ALPHAS = [0.25]
@@ -88,8 +81,14 @@ for alpha in ALPHAS:
                     # save model
                     model.save("saved_model/Milestone3/" + name)
 
+
 ## generate History and plot it
 def plot_history(model_history):
+    """
+    plot history of model training
+    :param model_history: history of training
+    :return: -
+    """
     epochs_range = range(len(model_history.epoch))
 
     complete_loss = model_history.history['loss']
@@ -122,24 +121,11 @@ def plot_history(model_history):
 
 
 ## generate scatter plot
-#model_large = tf.keras.models.load_model("saved_model/Milestone3/regression_100epochs_0.25alpha_0.2dropoutmse_largeVersion")
-model_small = tf.keras.models.load_model("saved_model/Milestone3/20221211-2234_regression10epochsface_10epochsmask_50epochsage_0.25alpha_0.2dropout")
+model_small = tf.keras.models.load_model(
+    "saved_model/Milestone3/20221211-2234_regression10epochsface_10epochsmask_50epochsage_0.25alpha_0.2dropout")
 test_ds, test_table = helper_multitask.create_dataset("regression", "age", "images/featureTableTest.csv")
-##
-#pred_small_train = model_small.predict(train_ds)
-#pred_small_val = model_small.predict(val_ds)
 pred_small_test = model_small.predict(test_ds)
-##
-#pred_large_train = model_large.predict(train_ds)
-#pred_large_val = model_large.predict(val_ds)
-#pred_large_test = model_large.predict(test_ds)
-# plt.scatter(train_table["age"], pred_train[2], s=70, alpha=0.2)
-# plt.scatter(train_table['age'], train_table['age'], s=10)
-# plt.scatter(val_table["age"], pred_val[2])
-# plt.scatter(val_table['age'], val_table['age'])
-
 plt.scatter(test_table["age"], pred_small_test[2], s=30, alpha=0.2)
 plt.scatter(test_table['age'], test_table['age'], s=10)
 plt.xlabel("real age")
 plt.ylabel("predicted age")
-#plt.scatter(test_table['age'], pred_large_test[2], s=70, alpha=0.2)
