@@ -124,11 +124,14 @@ included first and second classes from second milestone
   
 ## issues:
  - many pictures of faces with mask include asian faces
+   - bias network effect
+ - image dataset too small
+   - models is biased (clothes, hairs, glasses, face form, background, etc.)
 
 ## structure of the project:
 
 ### python files:
-added to Milestone 2
+
 - [helper_multitask.py](helper_multitask.py):
   - file with functions for:
     - loading and saving models
@@ -162,6 +165,7 @@ added to Milestone 2
   - generate plots for the presentation from csv-training data, which can be exported from the tensorboard dashboard
   - to generate a plot change the file paths for the pd.read_csv
 - [evaluationMilestone3.py](evaluationMilestone3.py):
+  - file for automatically evaluation of all saved models
 
 ### directories:
 - [evaluation](evaluation)
