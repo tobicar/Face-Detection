@@ -8,10 +8,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import helper_multitask
-##
-PATH_TO_MODEL = "saved_model/Milestone3/20221212-0010_regression10epochsface_10epochsmask_50epochsage_0.25alpha_0.5dropout"
 
-model = tf.keras.models.load_model(PATH_TO_MODEL)
+PATH_TO_MODEL_Regression = "saved_model/Milestone3/20221211-2234_regression10epochsface_10epochsmask_50epochsage_0.25alpha_0.2dropout"
+# PATH_TO_MODEL_Classification = "saved_model/Milestone3/20221210-1618_classification10epochsface_10epochsmask_50epochsage_0.25alpha_0.5dropout_categoricalLoss_l2"
+
+model_regression = tf.keras.models.load_model(PATH_TO_MODEL_Regression)
+# model_classification = tf.keras.models.load_model(PATH_TO_MODEL_Classification)
+
 
 ##
 def trunc(values, decs=2):
@@ -23,16 +26,27 @@ def trunc(values, decs=2):
     """
     return np.trunc(values * 10 ** decs) / (10 ** decs)
 
+
 ##
-path = "/Users/tobias/Downloads/bild.png"
-def predict_image(path, model, show_image=True,regression_age=True,age_csv_file_path = None):
+def predict_image(path, model, show_image=True, age_csv_file_path=None):
+    """
+    create and plot prediction to input image
+    :param path: path to file
+    :param model: trained model which is used to generate prediction
+    :param show_image: bool if image with prediction is plotted or only printed in console
+    :param age_csv_file_path: path to csv file to get real age of face
+    :return: -
+    """
+    # extract and prepare image
     img = tf.io.read_file(path)
     img = tf.image.decode_image(img, channels=3, expand_animations=False)
     img = tf.image.resize(img, (224, 224), method="bilinear")
     img.set_shape((224, 224, 3))
-    img = tf.expand_dims(img,axis=0)
+    img = tf.expand_dims(img, axis=0)
+    # generate prediction
     predictions = model.predict(img)
-    true_age = ""
+    # extract age
+    true_age = -1
     if age_csv_file_path:
         path_for_csv = ""
         if path.__contains__("images"):
@@ -42,34 +56,36 @@ def predict_image(path, model, show_image=True,regression_age=True,age_csv_file_
         table_data = pd.read_csv(age_csv_file_path)
         row = table_data[table_data["image_path"] == path_for_csv]
         if not row.empty:
-            true_age =row["age"].values[0]
+            true_age = row["age"].values[0]
         else:
-            true_age = ""
+            true_age = -1
+
     if show_image:
+        # generate plot
         fig, ax = plt.subplots()
         ax.imshow(tf.keras.preprocessing.image.array_to_img(img[0]))
-        if type(true_age) == str:
+        if true_age < 0:
             age_text = r'real age: unknown'
         else:
             age_text = r'real age: %.2f' % true_age
         textstr = '\n'.join((
             r'face: %.2f' % (predictions[0],),
-            r'mask: %.2f' % (predictions[1],), r'age: %.2f' % (predictions[2]),age_text))
+            r'mask: %.2f' % (predictions[1],), r'age: %.2f' % (predictions[2]), age_text))
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-        ax.text(240, 112, textstr,  fontsize=14, bbox=props,verticalalignment="center")
+        ax.text(240, 112, textstr, fontsize=14, bbox=props, verticalalignment="center")
         plt.show()
 
 
-
-
 ##
+# open file dialog
 root = tk.Tk()
 root.withdraw()
 
 filetypes = [('image files', '.png .jpg .jpeg .jfif')]
 file_path = filedialog.askopenfilename(parent=root, filetypes=filetypes)
 
+# check file_path and predict image
 if file_path:
-    #helper.predict_image(file_path, model)
+    # helper.predict_image(file_path, model)
     print(file_path)
-    predict_image(file_path,model,True,True,"images/featureTableTest.csv")
+    predict_image(file_path, model_regression, True, "images/featureTableTest.csv")
