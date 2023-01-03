@@ -10,7 +10,21 @@ import os
 import random
 
 ##
-def create_model(alpha=0.25, debug=False):
+def euclidean_distance(vects):
+    """Find the Euclidean distance between two vectors.
+
+    Arguments:
+        vects: List containing two tensors of same length.
+
+    Returns:
+        Tensor containing euclidean distance
+        (as floating point value) between vectors.
+    """
+
+    x, y = vects
+    sum_square = tf.math.reduce_sum(tf.math.square(x - y), axis=1, keepdims=True)
+    return tf.math.sqrt(tf.math.maximum(sum_square, tf.keras.backend.epsilon()))
+def create_model(alpha=1, debug=False):
     #TODO: train with global average pooling and with flatten layer
     left_input = tf.keras.Input(shape=(224, 224, 3), name='input_left')
     right_input = tf.keras.Input(shape=(224, 224, 3), name='input_right')
@@ -18,14 +32,18 @@ def create_model(alpha=0.25, debug=False):
     model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=alpha)
     model_pretrained.trainable = False
     feature_extractor = tf.keras.applications.mobilenet.preprocess_input(input)
-    feature_generator = model_pretrained(feature_extractor, training=False)
-    feature_generator = tf.keras.layers.GlobalAveragePooling2D()(feature_generator)
-    #feature_generator = tf.keras.layers.Flatten()(feature_generator)
-    feature_generator = tf.keras.layers.Dropout(0.2)(feature_generator)
+    pretrained_head = model_pretrained(feature_extractor, training=False)
+    #feature_generator = tf.keras.layers.GlobalAveragePooling2D()(feature_generator)
+    feature_generator = tf.keras.layers.Flatten()(pretrained_head)
+    #feature_generator = tf.keras.layers.Dropout(0.2)(feature_generator)
     feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
-    feature_generator = tf.keras.layers.Dense(128, activation='relu')(feature_generator)
+    feature_generator = tf.keras.layers.Dense(512, activation='relu')(feature_generator)
+    feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+    feature_generator = tf.keras.layers.Dense(256, activation="relu")(feature_generator)
+    feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+    output = tf.keras.layers.Dense(256)(feature_generator)
 
-    feature_model = tf.keras.Model(input, feature_generator, name="feature_generator")
+    feature_model = tf.keras.Model(input, output, name="feature_generator")
     if debug:
         feature_model.summary()
     encoded_l = feature_model(left_input)
@@ -33,14 +51,18 @@ def create_model(alpha=0.25, debug=False):
     subtracted = tf.keras.layers.Subtract()([encoded_l, encoded_r])
     l1_layer = tf.keras.layers.Lambda(lambda x: abs(x))(subtracted)
     prediction = tf.keras.layers.Dense(1, activation="sigmoid")(l1_layer)
+    #merge_layer = tf.keras.layers.Lambda(euclidean_distance)([encoded_l, encoded_r])
+    #normal_layer = tf.keras.layers.BatchNormalization()(merge_layer)
+    #prediction = tf.keras.layers.Dense(1, activation="sigmoid")(merge_layer)
     siamese_net = tf.keras.Model(inputs=[left_input, right_input], outputs=prediction)
     return siamese_net
 
 
 def contrastive_loss(y_true, y_pred, margin=1):
+    y_true = tf.cast(y_true, y_pred.dtype)
     square_pred = tf.math.square(y_pred)
     margin_square = tf.math.square(tf.math.maximum(margin - y_pred, 0))
-    return tf.math.reduce_mean(y_true * square_pred + (1 - y_true) * margin_square)
+    return tf.keras.backend.mean((1 - y_true) * square_pred + y_true * margin_square)
 
 
 def compile_model(model):
@@ -102,7 +124,7 @@ def make_pairs(x,y):
         x2 = x[idx2]
 
         pairs += [[x1, x2]]
-        labels += [1]
+        labels += [0]
 
         # add a non-matching example
         #label2 = random.randint(0, num_classes - 1)
@@ -116,7 +138,7 @@ def make_pairs(x,y):
         x2 = x[idx2]
 
         pairs += [[x1, x2]]
-        labels += [0]
+        labels += [1]
 
     return np.array(pairs), np.array(labels).astype("float32")
 
@@ -134,3 +156,6 @@ model = create_model()
 model = compile_model(model)
 model.summary()
 history = model.fit(ds, epochs=EPOCHS)
+
+##
+
