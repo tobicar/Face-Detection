@@ -1,4 +1,8 @@
 ##
+import os
+import random
+import pandas as pd
+import numpy as np
 import tensorflow as tf
 import helper
 
@@ -20,6 +24,71 @@ class DistanceLayer(tf.keras.layers.Layer):
         ap_distance = tf.reduce_sum(tf.square(anchor - positive), -1)
         an_distance = tf.reduce_sum(tf.square(anchor - negative), -1)
         return (ap_distance, an_distance)
+
+class SiameseModel(tf.keras.Model):
+    """The Siamese Network model with a custom training and testing loops.
+
+    Computes the triplet loss using the three embeddings produced by the
+    Siamese Network.
+
+    The triplet loss is defined as:
+       L(A, P, N) = max(‖f(A) - f(P)‖² - ‖f(A) - f(N)‖² + margin, 0)
+    """
+
+    def __init__(self, siamese_network, margin=0.5):
+        super(SiameseModel, self).__init__()
+        self.siamese_network = siamese_network
+        self.margin = margin
+        self.loss_tracker = tf.metrics.Mean(name="loss")
+
+    def call(self, inputs):
+        return self.siamese_network(inputs)
+
+    def train_step(self, data):
+        # GradientTape is a context manager that records every operation that
+        # you do inside. We are using it here to compute the loss so we can get
+        # the gradients and apply them using the optimizer specified in
+        # `compile()`.
+        with tf.GradientTape() as tape:
+            loss = self._compute_loss(data)
+
+        # Storing the gradients of the loss function with respect to the
+        # weights/parameters.
+        gradients = tape.gradient(loss, self.siamese_network.trainable_weights)
+
+        # Applying the gradients on the model using the specified optimizer
+        self.optimizer.apply_gradients(
+            zip(gradients, self.siamese_network.trainable_weights)
+        )
+
+        # Let's update and return the training loss metric.
+        self.loss_tracker.update_state(loss)
+        return {"loss": self.loss_tracker.result()}
+
+    def test_step(self, data):
+        loss = self._compute_loss(data)
+
+        # Let's update and return the loss metric.
+        self.loss_tracker.update_state(loss)
+        return {"loss": self.loss_tracker.result()}
+
+    def _compute_loss(self, data):
+        # The output of the network is a tuple containing the distances
+        # between the anchor and the positive example, and the anchor and
+        # the negative example.
+        ap_distance, an_distance = self.siamese_network(data)
+
+        # Computing the Triplet Loss by subtracting both distances and
+        # making sure we don't get a negative value.
+        loss = ap_distance - an_distance
+        loss = tf.maximum(loss + self.margin, 0.0)
+        return loss
+
+    @property
+    def metrics(self):
+        # We need to list our metrics here so the `reset_states()` can be
+        # called automatically.
+        return [self.loss_tracker]
 
 ##
 def create_model(alpha=0.25, debug=False):
@@ -63,15 +132,96 @@ def compile_model(model):
     return model
 
 
-## train the model
+## CREATE THE DATASET
+
+def decode_image(img_path):
+    image_size = (224, 224)
+    num_channels = 3
+    img = tf.io.read_file(img_path)
+    img = tf.image.decode_image(
+        img, channels=num_channels, expand_animations=False
+    )
+    #img = tf.image.convert_image_dtype(img, tf.float32)
+    img = tf.image.resize(img, image_size, method="bilinear")
+    img.set_shape((image_size[0], image_size[1], num_channels))
+    return img
+
+
+def preprocess_triplets(anchor, positive, negative):
+    return decode_image(anchor), decode_image(positive), decode_image(negative)
+
+
+def preprocess_triplets_array(filepath_anchor, filepath_positive, filepath_negative):
+    return {"anchor": decode_image(filepath_anchor),
+            "positive": decode_image(filepath_positive),
+            "negative": decode_image(filepath_negative)}
+
+image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\rawdata4"
+#images = sorted([str(image_path +  "/" +  f) for f in os.listdir(image_path)])
+
+images = sorted([(str(image_path + "\\" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
+
+images_df = pd.DataFrame(images, columns=["path", "class"])
+
+len(images_df.groupby("class").count())
+
+# train test split durchführen
+
+##
+def make_triplets(image_paths, image_classes):
+
+    num_classes = image_classes.unique().tolist()
+    digit_indices = [(np.where(image_classes == image_class)[0], image_class) for image_class in num_classes]
+    triplets = []
+
+    for anchor_id in range(len(image_paths)):
+        # find anchor
+        anchor_path = image_paths[anchor_id]
+        anchor_class = image_classes[anchor_id]
+        anchor_class_id = int(np.where(np.array(num_classes) == anchor_class)[0][0])
+
+        # find matching example
+        positive_id = random.choice(digit_indices[anchor_class_id][0])
+        positive_path = image_paths[positive_id]
+
+        # find non-matching example
+        negative_class = random.choice(num_classes)
+        while negative_class == anchor_class:
+            negative_class = random.choice(num_classes)
+
+        negative_class_id = int(np.where(np.array(num_classes) == negative_class)[0][0])
+        negative_id = random.choice(digit_indices[negative_class_id][0])
+        negative_path = image_paths[negative_id]
+
+        triplets += [[anchor_path, positive_path, negative_path]]
+
+        print(anchor_path)
+        print(positive_path)
+        print(negative_path)
+
+    return np.array(triplets)
+
+
+##
+# generate tensorflow dataset
+triplets = make_triplets(images_df["path"], images_df["class"])
+data = tf.data.Dataset.from_tensor_slices((triplets[:, 0], triplets[:, 1], triplets[:, 2]))
+ds = data.map(preprocess_triplets_array)
+ds = ds.batch(32)
+
+##
+# train the model
 EPOCHS = 10
 BATCH_SIZE = 32
 model = create_model()
 model = compile_model(model)
 model.summary()
-history = model.fit([x_train_1, x_train_2],
-    labels_train,
-    validation_data=([x_val_1, x_val_2], labels_val),
-    batch_size=BATCH_SIZE,
-    epochs=EPOCHS,
-)
+history = model.fit(ds, epochs=EPOCHS)
+
+##
+EPOCHS = 10
+BATCH_SIZE = 32
+model = create_model()
+siamese_model = SiameseModel(model)
+siamese_model=compile_model(siamese_model)
+siamese_model.fit(ds, epochs=10)
