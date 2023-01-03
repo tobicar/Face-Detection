@@ -183,3 +183,9 @@ included first and second classes from second milestone
   - contains all trained models, that can be loaded
 
 # Fourth Milestone:
+
+goal --> Recognition of face
+
+new files:
+recognitionTrainingTripletLoss.py
+recognitionBinaryClassification.py
