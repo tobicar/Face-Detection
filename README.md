@@ -186,6 +186,11 @@ included first and second classes from second milestone
 
 goal --> Recognition of face
 
+used datasets:
+https://www.kaggle.com/datasets/stoicstatic/face-recognition-dataset?resource=download
+https://www.kaggle.com/code/kerimelebiler/face-recognition-with-cnn/data
+
+
 new files:
 recognitionTrainingTripletLoss.py
 recognitionBinaryClassification.py
