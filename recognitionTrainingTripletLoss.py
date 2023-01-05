@@ -1,12 +1,11 @@
 ##
 import os
 import random
+
 import pandas as pd
 import numpy as np
 import tensorflow as tf
 import helper
-
-#TODO: training triplet loss umstellen
 
 
 ##
@@ -24,6 +23,7 @@ class DistanceLayer(tf.keras.layers.Layer):
         ap_distance = tf.reduce_sum(tf.square(anchor - positive), -1)
         an_distance = tf.reduce_sum(tf.square(anchor - negative), -1)
         return (ap_distance, an_distance)
+
 
 class SiameseModel(tf.keras.Model):
     """The Siamese Network model with a custom training and testing loops.
@@ -90,9 +90,10 @@ class SiameseModel(tf.keras.Model):
         # called automatically.
         return [self.loss_tracker]
 
+
 ##
 def create_model(alpha=0.25, debug=False):
-    #TODO: train with global average pooling and with flatten layer
+    # TODO: train with global average pooling and with flatten layer
     anchor_input = tf.keras.Input(name="anchor", shape=(224, 224, 3))
     positive_input = tf.keras.Input(name="positive", shape=(224, 224, 3))
     negative_input = tf.keras.Input(name="negative", shape=(224, 224, 3))
@@ -102,7 +103,7 @@ def create_model(alpha=0.25, debug=False):
     feature_extractor = tf.keras.applications.mobilenet.preprocess_input(input)
     feature_generator = model_pretrained(feature_extractor)
     feature_generator = tf.keras.layers.GlobalAveragePooling2D()(feature_generator)
-    #feature_generator = tf.keras.layers.Flatten()(feature_generator)
+    # feature_generator = tf.keras.layers.Flatten()(feature_generator)
     feature_generator = tf.keras.layers.Dropout(0.2)(feature_generator)
     feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
     feature_generator = tf.keras.layers.Dense(128, activation='relu')(feature_generator)
@@ -141,7 +142,7 @@ def decode_image(img_path):
     img = tf.image.decode_image(
         img, channels=num_channels, expand_animations=False
     )
-    #img = tf.image.convert_image_dtype(img, tf.float32)
+    # img = tf.image.convert_image_dtype(img, tf.float32)
     img = tf.image.resize(img, image_size, method="bilinear")
     img.set_shape((image_size[0], image_size[1], num_channels))
     return img
@@ -156,8 +157,9 @@ def preprocess_triplets_array(filepath_anchor, filepath_positive, filepath_negat
             "positive": decode_image(filepath_positive),
             "negative": decode_image(filepath_negative)}
 
+
 image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\rawdata4"
-#images = sorted([str(image_path +  "/" +  f) for f in os.listdir(image_path)])
+# images = sorted([str(image_path +  "/" +  f) for f in os.listdir(image_path)])
 
 images = sorted([(str(image_path + "\\" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
 
@@ -165,11 +167,12 @@ images_df = pd.DataFrame(images, columns=["path", "class"])
 
 len(images_df.groupby("class").count())
 
+
 # train test split durchführen
 
-##
-def make_triplets(image_paths, image_classes):
 
+##
+def make_triplets(image_paths, image_classes, num=5):
     num_classes = image_classes.unique().tolist()
     digit_indices = [(np.where(image_classes == image_class)[0], image_class) for image_class in num_classes]
     triplets = []
@@ -181,23 +184,48 @@ def make_triplets(image_paths, image_classes):
         anchor_class_id = int(np.where(np.array(num_classes) == anchor_class)[0][0])
 
         # find matching example
-        positive_id = random.choice(digit_indices[anchor_class_id][0])
-        positive_path = image_paths[positive_id]
+        positive_id_list = random.choices(digit_indices[anchor_class_id][0], k=num)
 
         # find non-matching example
-        negative_class = random.choice(num_classes)
-        while negative_class == anchor_class:
-            negative_class = random.choice(num_classes)
+        negative_class_list = random.choices(num_classes, k=num)
+        while anchor_class in negative_class_list:
+            negative_class_list = random.choices(num_classes, k=num)
 
-        negative_class_id = int(np.where(np.array(num_classes) == negative_class)[0][0])
-        negative_id = random.choice(digit_indices[negative_class_id][0])
-        negative_path = image_paths[negative_id]
+        negative_id_list = []
+        for negative_class in negative_class_list:
+            negative_class_id = int(np.where(np.array(num_classes) == negative_class)[0][0])
+            negative_id_list.append(random.choice(digit_indices[negative_class_id][0]))
 
-        triplets += [[anchor_path, positive_path, negative_path]]
+        for i in range(5):
+            positive_path = image_paths[positive_id_list[i]]
+            negative_path = image_paths[negative_id_list[i]]
+            triplets += [[anchor_path, positive_path, negative_path]]
 
-        print(anchor_path)
-        print(positive_path)
-        print(negative_path)
+            print(anchor_path)
+            print(positive_path)
+            print(negative_path + "\n")
+
+        # all triplets (ca. 6 Mio.)
+        #
+        # find matching example
+        # for positive_id in digit_indices[anchor_class_id][0]:
+        #    #positive_id = random.choice(digit_indices[anchor_class_id][0])
+        #    if anchor_id == positive_id:
+        #        continue
+        #    positive_path = image_paths[positive_id]
+        #
+        # find non-matching example
+        #    for negative_class in num_classes:
+        #        if negative_class == anchor_class:
+        #            continue
+        #        negative_class_id = int(np.where(np.array(num_classes) == negative_class)[0][0])
+        #        negative_id = random.choice(digit_indices[negative_class_id][0])
+        #        negative_path = image_paths[negative_id]
+        #        triplets += [[anchor_path, positive_path, negative_path]]
+
+        #        print(anchor_path)
+        #        print(positive_path)
+        #        print(negative_path + "\n")
 
     return np.array(triplets)
 
@@ -205,23 +233,38 @@ def make_triplets(image_paths, image_classes):
 ##
 # generate tensorflow dataset
 triplets = make_triplets(images_df["path"], images_df["class"])
-data = tf.data.Dataset.from_tensor_slices((triplets[:, 0], triplets[:, 1], triplets[:, 2]))
-ds = data.map(preprocess_triplets_array)
-ds = ds.batch(32)
+
+## online strategy
+
+random.seed(0)
+random.shuffle(triplets)
+train_large = triplets[0:int(len(triplets) * 0.70)]
+test_large = triplets[int(len(triplets) * 0.70):int(len(triplets) * 0.85)]
+val_large = triplets[int(len(triplets) * 0.85):]
+
+train_small = train_large[0:int(len(train_large) * 0.1)]
+test_small = test_large[0:int(len(test_large) * 0.1)]
+val_small = val_large[0:int(len(val_large) * 0.1)]
+
+train = train_small
+test = test_small
+val = val_small
+
+data_train = tf.data.Dataset.from_tensor_slices((train[:, 0], train[:, 1], train[:, 2]))
+ds_train = data_train.map(preprocess_triplets_array)
+ds_train = ds_train.batch(32)
+
+data_test = tf.data.Dataset.from_tensor_slices((test[:, 0], test[:, 1], test[:, 2]))
+ds_test = data_test.map(preprocess_triplets_array)
+ds_test = ds_test.batch(32)
+
+data_val = tf.data.Dataset.from_tensor_slices((val[:, 0], val[:, 1], val[:, 2]))
+ds_val = data_val.map(preprocess_triplets_array)
+ds_val = ds_val.batch(32)
 
 ##
-# train the model
 EPOCHS = 10
-BATCH_SIZE = 32
-model = create_model()
-model = compile_model(model)
-model.summary()
-history = model.fit(ds, epochs=EPOCHS)
-
-##
-EPOCHS = 10
-BATCH_SIZE = 32
 model = create_model()
 siamese_model = SiameseModel(model)
-siamese_model=compile_model(siamese_model)
-siamese_model.fit(ds, epochs=10)
+siamese_model = compile_model(siamese_model)
+history = siamese_model.fit(ds_train, epochs=10, validation_data=ds_val)
