@@ -24,6 +24,8 @@ def euclidean_distance(vects):
     x, y = vects
     sum_square = tf.math.reduce_sum(tf.math.square(x - y), axis=1, keepdims=True)
     return tf.math.sqrt(tf.math.maximum(sum_square, tf.keras.backend.epsilon()))
+
+##
 def create_model(alpha=1, debug=False):
     #TODO: train with global average pooling and with flatten layer
     left_input = tf.keras.Input(shape=(224, 224, 3), name='input_left')
@@ -144,9 +146,50 @@ def make_pairs(x,y):
 
 ## generate tensorflow dataset
 pairs = make_pairs(images_df["path"],images_df["class"])
-data = tf.data.Dataset.from_tensor_slices((pairs[0][:,0],pairs[0][:,1],pairs[1]))
-ds = data.map(preprocess_binary_array)
-ds = ds.batch(32)
+##
+np.random.RandomState(seed=32).shuffle(pairs[0])
+np.random.RandomState(seed=32).shuffle(pairs[1])
+
+train = pairs[0][0:int(len(pairs[0]) * 0.70)]
+val = pairs[0][int(len(pairs[0]) * 0.85):]
+test = pairs[0][int(len(pairs[0]) * 0.70):int(len(pairs[0]) * 0.85)]
+
+train_label = pairs[1][0:int(len(pairs[1]) * 0.70)]
+val_label = pairs[1][int(len(pairs[1]) * 0.85):]
+test_label = pairs[1][int(len(pairs[1]) * 0.70):int(len(pairs[1]) * 0.85)]
+
+
+data_train = tf.data.Dataset.from_tensor_slices((train[:, 0], train[:, 1], train_label))
+data_val = tf.data.Dataset.from_tensor_slices((val[:, 0], val[:, 1], val_label))
+data_test = tf.data.Dataset.from_tensor_slices((test[:, 0], test[:, 1], test_label))
+
+ds_train = data_train.map(preprocess_binary_array)
+ds_train = ds_train.batch(32)
+ds_train = ds_train.prefetch(8)
+
+ds_val = data_val.map(preprocess_binary_array)
+ds_val = ds_val.batch(32)
+ds_val = ds_val.prefetch(8)
+
+ds_test = data_test.map(preprocess_binary_array)
+ds_test = ds_test.batch(32)
+ds_test = ds_test.prefetch(8)
+
+
+
+#data = tf.data.Dataset.from_tensor_slices((pairs[0][:,0],pairs[0][:,1],pairs[1]))
+#ds = data.map(preprocess_binary_array)
+#ds = ds.batch(32)
+#number_of_samples = len(pairs[1])
+# Let's now split our dataset in train and validation.
+#train_dataset = ds.take(round(number_of_samples * 0.8))
+#val_dataset = ds.skip(round(number_of_samples * 0.8))
+
+#train_dataset = train_dataset.batch(32)
+#train_dataset = train_dataset.prefetch(8)
+
+#val_dataset = val_dataset.batch(32)
+#val_dataset = val_dataset.prefetch(8)
 
 
 ## train the model
@@ -155,7 +198,7 @@ BATCH_SIZE = 32
 model = create_model()
 model = compile_model(model)
 model.summary()
-history = model.fit(ds, epochs=EPOCHS)
+history = model.fit(ds_train, validation_data=ds_val, epochs=EPOCHS)
 
 ##
 
