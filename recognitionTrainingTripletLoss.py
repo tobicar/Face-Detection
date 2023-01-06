@@ -127,9 +127,14 @@ def triplet_loss(ap_distance, an_distance, margin=1):
     loss = tf.maximum(loss + margin, 0.0)
     return loss
 
+def triplet_accuracy(ap_distance, an_distance):
+    margin = 0
+    pred = (ap_distance - an_distance - margin).cpu().data
+    return (pred > 0).sum()*1.0/ap_distance.size()[0]
+
 
 def compile_model(model):
-    model.compile(optimizer='adam', loss=triplet_loss, metrics=['accuracy'])
+    model.compile(optimizer='adam', loss=triplet_loss, metrics=triplet_accuracy)
     return model
 
 
@@ -158,7 +163,8 @@ def preprocess_triplets_array(filepath_anchor, filepath_positive, filepath_negat
             "negative": decode_image(filepath_negative)}
 
 
-image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\rawdata4"
+#image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\rawdata4"
+image_path = r"C:\Users\svea\PycharmProjects\Face-Detection\images\rawdata4"
 # images = sorted([str(image_path +  "/" +  f) for f in os.listdir(image_path)])
 
 images = sorted([(str(image_path + "\\" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
@@ -184,7 +190,8 @@ def make_triplets(image_paths, image_classes, num=5):
         anchor_class_id = int(np.where(np.array(num_classes) == anchor_class)[0][0])
 
         # find matching example
-        positive_id_list = [anchor_id, random.choices(digit_indices[anchor_class_id][0], k=num)]
+        positive_id_list = [anchor_id]
+        positive_id_list.extend(random.choices(digit_indices[anchor_class_id][0], k=num))
 
         # find non-matching example
         negative_class_list = random.choices(num_classes, k=num+1)
@@ -201,11 +208,11 @@ def make_triplets(image_paths, image_classes, num=5):
             negative_path = image_paths[negative_id_list[i]]
             triplets += [[anchor_path, positive_path, negative_path]]
 
-            #print(anchor_path)
-            #print(positive_path)
-            #print(negative_path + "\n")
+            print(anchor_path)
+            print(positive_path)
+            print(negative_path + "\n")
 
-        print(len(triplets))
+        #print(len(triplets))
 
         # all triplets (ca. 6 Mio.)
         #
@@ -244,13 +251,17 @@ train_large = triplets[0:int(len(triplets) * 0.70)]
 test_large = triplets[int(len(triplets) * 0.70):int(len(triplets) * 0.85)]
 val_large = triplets[int(len(triplets) * 0.85):]
 
-train_small = train_large[0:int(len(train_large) * 0.1)]
-test_small = test_large[0:int(len(test_large) * 0.1)]
-val_small = val_large[0:int(len(val_large) * 0.1)]
+#train_small = train_large[0:int(len(train_large) * 0.1)]
+#test_small = test_large[0:int(len(test_large) * 0.1)]
+#val_small = val_large[0:int(len(val_large) * 0.1)]
 
-train = train_small
-test = test_small
-val = val_small
+#train = train_small
+#test = test_small
+#val = val_small
+
+train = train_large
+test = test_large
+val = val_large
 
 data_train = tf.data.Dataset.from_tensor_slices((train[:, 0], train[:, 1], train[:, 2]))
 ds_train = data_train.map(preprocess_triplets_array)
