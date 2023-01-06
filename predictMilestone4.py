@@ -32,9 +32,11 @@ def decode_image(img_path):
 ##
 PATH_TO_DATABASE = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/database"
 PATH_TO_MODEL = "saved_model/Milestone4/binaryClassification_10epochs_alpha1"
+PATH_TO_MODEL2 = "saved_model/Milestone4/binaryClassification_10epochs_alpha1_v2"
 
 
 model = tf.keras.models.load_model(PATH_TO_MODEL, custom_objects={"contrastive_loss": contrastive_loss})
+model2 = tf.keras.models.load_model(PATH_TO_MODEL2, custom_objects={"contrastive_loss": contrastive_loss})
 ##
 images = sorted([(str(PATH_TO_DATABASE +  "/" +  f), str(f.split("_")[0])) for f in os.listdir(PATH_TO_DATABASE)])
 
@@ -48,11 +50,11 @@ database_list = [decode_image(f) for f in images_df["path"]]
 database_list = np.array(database_list)
 
 ## choose image to predict
-IMG_TO_PREDICT = "/Users/tobias/Downloads/alexandra.jpg"
+IMG_TO_PREDICT = "/Users/tobias/Downloads/Bild.jpeg"
 img = decode_image(IMG_TO_PREDICT)
 image_list = np.array([img]*len(images_df))
 ##
-prediction = model.predict([image_list, database_list])
+prediction = model2.predict([image_list, database_list])
 images_df["pred"] = prediction
 pred_class = images_df.groupby("class").apply(lambda x: x['pred'].sum()/len(x))
 top4 = pred_class.nsmallest(4)
@@ -72,12 +74,21 @@ plt.show()
 
 
 ## predict two images
-IMAGE_PATH_1 = "/Users/tobias/Downloads/alexandra.jpg"
-IMAGE_PATH_2 = "/Users/tobias/Downloads/alexandra.jpg"
+IMAGE_PATH_1 = "/Users/tobias/Downloads/zac.jpg"
+IMAGE_PATH_2 = "/Users/tobias/Downloads/zac.jpg"
 img1 = decode_image(IMAGE_PATH_1)
 img1 = tf.expand_dims(img1, axis=0)
 img2 = decode_image(IMAGE_PATH_2)
 img2 = tf.expand_dims(img2, axis=0)
-prediction = model.predict([img1, img2])
+prediction = model2.predict([img1, img2])
+
+
+## generate database with n random picks from each person
+def generate_database(file_path):
+    pass
+
+
+
+
 
 

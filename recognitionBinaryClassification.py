@@ -125,6 +125,11 @@ def make_pairs(image_path, image_class, num=5):
         # add a matching example
         first_image_path = image_path[idx1]
         first_image_class = image_class[idx1] #label for the first image
+
+        #add picture with itself
+        pairs += [[first_image_path, first_image_path]]
+        labels += [0]
+
         #find index
         first_image_class_idx = np.where(np.array(all_class_labels) == first_image_class)[0][0]
         # take x random image from pictures with the same class
