@@ -109,38 +109,47 @@ len(images_df.groupby("class").count())
 # train test split durchführen
 
 ##
-def make_pairs(x,y):
 
-    num_classes = y.unique().tolist()
-    digit_indices = [(np.where(y == i)[0],i) for i in num_classes]
+
+def make_pairs(image_path, image_class, num=5):
+
+    #array with names of all class labels
+    all_class_labels = image_class.unique().tolist()
+    # list with arrays of all indexes of the pictures belonging to one class
+    digit_indices = [(np.where(image_class == i)[0], i) for i in all_class_labels]
 
     pairs = []
     labels = []
 
-    for idx1 in range(len(x)):
+    for idx1 in range(len(image_path)):
         # add a matching example
-        x1 = x[idx1]
-        label1 = y[idx1]
-        label1_idx = np.where(np.array(num_classes) == label1)[0][0]
-        idx2 = random.choice(digit_indices[label1_idx][0])
-        x2 = x[idx2]
-
-        pairs += [[x1, x2]]
-        labels += [0]
+        first_image_path = image_path[idx1]
+        first_image_class = image_class[idx1] #label for the first image
+        #find index
+        first_image_class_idx = np.where(np.array(all_class_labels) == first_image_class)[0][0]
+        # take x random image from pictures with the same class
+        idx_list = random.sample(digit_indices[first_image_class_idx][0].tolist(), k=num)
+        for sec_image_idx in idx_list:
+            sec_image_path = image_path[sec_image_idx]
+            pairs += [[first_image_path, sec_image_path]]
+            labels += [0] # zero because there are the same people
 
         # add a non-matching example
-        #label2 = random.randint(0, num_classes - 1)
-        label2 = random.choice(num_classes)
-        while label2 == label1:
-            #label2 = random.randint(0, num_classes - 1)
-            label2 = random.choice(num_classes)
 
-        label2_idx = np.where(np.array(num_classes) == label2)[0][0]
-        idx2 = random.choice(digit_indices[label2_idx][0])
-        x2 = x[idx2]
+        # make a copy of the class label list
+        sec_class_list = all_class_labels.copy()
+        # remove the label of the first image from the list
+        sec_class_list.remove(first_image_class)
+        # choose x random class labels from the list of people
+        class_label2_list = random.sample(sec_class_list, k=num)
+        # for each class choose one random picture
+        for class_label2 in class_label2_list:
+            class_label2_idx = np.where(np.array(all_class_labels) == class_label2)[0][0]
+            idx2 = random.choice(digit_indices[class_label2_idx][0])
+            x2 = image_path[idx2]
 
-        pairs += [[x1, x2]]
-        labels += [1]
+            pairs += [[first_image_path, x2]]
+            labels += [1]
 
     return np.array(pairs), np.array(labels).astype("float32")
 
@@ -172,7 +181,7 @@ ds_val = ds_val.batch(32)
 ds_val = ds_val.prefetch(8)
 
 ds_test = data_test.map(preprocess_binary_array)
-ds_test = ds_test.batch(32)
+ds_test = ds_test.batch(1)
 ds_test = ds_test.prefetch(8)
 
 

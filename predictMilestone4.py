@@ -10,6 +10,14 @@ import os
 import random
 ##
 
+
+def contrastive_loss(y_true, y_pred, margin=1):
+    y_true = tf.cast(y_true, y_pred.dtype)
+    square_pred = tf.math.square(y_pred)
+    margin_square = tf.math.square(tf.math.maximum(margin - y_pred, 0))
+    return tf.keras.backend.mean((1 - y_true) * square_pred + y_true * margin_square)
+
+
 def decode_image(img_path):
     image_size = (224, 224)
     num_channels = 3
@@ -23,10 +31,10 @@ def decode_image(img_path):
     return img
 ##
 PATH_TO_DATABASE = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/database"
-PATH_TO_MODEL = ""
+PATH_TO_MODEL = "saved_model/Milestone4/binaryClassification_10epochs_alpha1"
 
 
-model = tf.keras.models.load_model(PATH_TO_MODEL)
+model = tf.keras.models.load_model(PATH_TO_MODEL, custom_objects={"contrastive_loss": contrastive_loss})
 ##
 images = sorted([(str(PATH_TO_DATABASE +  "/" +  f), str(f.split("_")[0])) for f in os.listdir(PATH_TO_DATABASE)])
 
@@ -40,7 +48,7 @@ database_list = [decode_image(f) for f in images_df["path"]]
 database_list = np.array(database_list)
 
 ## choose image to predict
-IMG_TO_PREDICT = "/Users/tobias/Downloads/tom-cruise-2.jpg"
+IMG_TO_PREDICT = "/Users/tobias/Downloads/alexandra.jpg"
 img = decode_image(IMG_TO_PREDICT)
 image_list = np.array([img]*len(images_df))
 ##
@@ -55,10 +63,21 @@ textstr = '\n'.join((
                 r'1. %s: %.2f' % (top4.index[0], top4[0],),
                 r'2. %s: %.2f' % (top4.index[1], top4[1],),
                 r'3. %s: %.2f' % (top4.index[2], top4[2],),
-                r'4. %s: %.2f' % (top4.index[3], top4[1],)
+                r'4. %s: %.2f' % (top4.index[3], top4[3],)
 ))
 props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 ax.text(240, 112, textstr, fontsize=14, bbox=props, verticalalignment="center")
 plt.show()
+
+
+
+## predict two images
+IMAGE_PATH_1 = "/Users/tobias/Downloads/alexandra.jpg"
+IMAGE_PATH_2 = "/Users/tobias/Downloads/alexandra.jpg"
+img1 = decode_image(IMAGE_PATH_1)
+img1 = tf.expand_dims(img1, axis=0)
+img2 = decode_image(IMAGE_PATH_2)
+img2 = tf.expand_dims(img2, axis=0)
+prediction = model.predict([img1, img2])
 
 
