@@ -184,26 +184,28 @@ def make_triplets(image_paths, image_classes, num=5):
         anchor_class_id = int(np.where(np.array(num_classes) == anchor_class)[0][0])
 
         # find matching example
-        positive_id_list = random.choices(digit_indices[anchor_class_id][0], k=num)
+        positive_id_list = [anchor_id, random.choices(digit_indices[anchor_class_id][0], k=num)]
 
         # find non-matching example
-        negative_class_list = random.choices(num_classes, k=num)
+        negative_class_list = random.choices(num_classes, k=num+1)
         while anchor_class in negative_class_list:
-            negative_class_list = random.choices(num_classes, k=num)
+            negative_class_list = random.choices(num_classes, k=num+1)
 
         negative_id_list = []
         for negative_class in negative_class_list:
             negative_class_id = int(np.where(np.array(num_classes) == negative_class)[0][0])
             negative_id_list.append(random.choice(digit_indices[negative_class_id][0]))
 
-        for i in range(5):
+        for i in range(len(positive_id_list)):
             positive_path = image_paths[positive_id_list[i]]
             negative_path = image_paths[negative_id_list[i]]
             triplets += [[anchor_path, positive_path, negative_path]]
 
-            print(anchor_path)
-            print(positive_path)
-            print(negative_path + "\n")
+            #print(anchor_path)
+            #print(positive_path)
+            #print(negative_path + "\n")
+
+        print(len(triplets))
 
         # all triplets (ca. 6 Mio.)
         #
