@@ -207,7 +207,7 @@ def preprocess_triplets_array(filepath_anchor, filepath_positive, filepath_negat
 
 
 
-
+##
 # train test split durchführen
 def make_triplets(image_paths, image_classes, num=5):
     num_classes = image_classes.unique().tolist()
@@ -264,7 +264,7 @@ def make_triplets_utk(image_paths, image_paths_utk, image_classes, num=5):
         # find non-matching example
         negative_path_list = []
         for i in range(num + 1):
-            if random.choice([True, False, False]):
+            if random.choice([True]):
                 negative_class_id = int(random.choice(np.where(np.array(num_classes) == random.choice(num_classes))))
                 while anchor_class_id == negative_class_id:
                     negative_class_id = int(
@@ -287,7 +287,7 @@ def make_triplets_utk(image_paths, image_paths_utk, image_classes, num=5):
 
 ##
 
-image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\cfp_data"
+image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\train"
 #image_path = r"C:\Users\svea\PycharmProjects\Face-Detection\images\rawdata4"
 
 #MAC OS
@@ -309,42 +309,25 @@ directory_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\utk
 subfiles = [directory_path + "/" + f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
 
 
-triplets = make_triplets_utk(images_df["path"], subfiles, images_df["class"], num=9)
+triplets = make_triplets_utk(images_df["path"], subfiles, images_df["class"], num=30)
 
 ## online strategy
 
 np.random.seed(123)
 np.random.shuffle(triplets)
-train_large = triplets[0:int(len(triplets) * 0.70)]
-test_large = triplets[int(len(triplets) * 0.70):int(len(triplets) * 0.85)]
-val_large = triplets[int(len(triplets) * 0.85):]
-
-# train_small = train_large[0:int(len(train_large) * 0.1)]
-# test_small = test_large[0:int(len(test_large) * 0.1)]
-# val_small = val_large[0:int(len(val_large) * 0.1)]
-
-# train = train_small
-# test = test_small
-# val = val_small
-
-train = train_large
-test = test_large
-val = val_large
+train = triplets[0:int(len(triplets) * 0.75)]
+val = triplets[int(len(triplets) * 0.75):]
 
 data_train = tf.data.Dataset.from_tensor_slices((train[:, 0], train[:, 1], train[:, 2]))
 ds_train = data_train.map(preprocess_triplets_array)
 ds_train = ds_train.batch(32)
-
-data_test = tf.data.Dataset.from_tensor_slices((test[:, 0], test[:, 1], test[:, 2]))
-ds_test = data_test.map(preprocess_triplets_array)
-ds_test = ds_test.batch(32)
 
 data_val = tf.data.Dataset.from_tensor_slices((val[:, 0], val[:, 1], val[:, 2]))
 ds_val = data_val.map(preprocess_triplets_array)
 ds_val = ds_val.batch(32)
 
 ##
-EPOCHS = 10
+#EPOCHS = 10
 #model = create_model()
 
 @tf.function
@@ -357,17 +340,17 @@ anchor_input = tf.keras.Input(name="anchor", shape=(224, 224, 3))
 positive_input = tf.keras.Input(name="positive", shape=(224, 224, 3))
 negative_input = tf.keras.Input(name="negative", shape=(224, 224, 3))
 input = tf.keras.Input(shape=(224, 224, 3), name='input')
-model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=0.25)
+model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=1)
 model_pretrained.trainable = False
 feature_extractor = tf.keras.applications.mobilenet.preprocess_input(input)
 feature_generator = model_pretrained(feature_extractor)
 feature_generator = tf.keras.layers.GlobalAveragePooling2D()(feature_generator)
 # feature_generator = tf.keras.layers.Flatten()(feature_generator)
-feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
 feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
 feature_generator = tf.keras.layers.Dense(256, activation='relu')(feature_generator)
-feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
 feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
 feature_generator = tf.keras.layers.Dense(128, activation='relu')(feature_generator)
 feature_generator = tf.keras.layers.Lambda(normalize)(feature_generator)
 
@@ -386,9 +369,9 @@ siamese_model = SiameseModel(siamese_net)
 siamese_model.compile(optimizer='adam', loss=triplet_loss, metrics=["accuracy", "precision", triplet_accuracy])
 # = compile_model(siamese_model)
 ##
-history = siamese_model.fit(ds_train, epochs=10, validation_data=ds_val)
+history = siamese_model.fit(ds_train, epochs=15, validation_data=ds_val)
 ## save weights
-siamese_model.save_weights("saved_model/Milestone4/tripletLoss_10epochs_alpha025_weights_utk_cfp/siamese_net")
+siamese_model.save_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain/siamese_net")
 
 ## load weights
 # model vorher erstellen

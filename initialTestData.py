@@ -3,7 +3,9 @@ import os
 import random
 import shutil
 import pandas as pd
+import numpy as np
 
+##
 DIRECTORY = "images/rawdata"
 
 
@@ -116,9 +118,45 @@ def create_feature_table(directory, path):
     df = pd.DataFrame(data)
     df.to_csv(path + ".csv")
 
+
 ## split for milestone 2
 
 split_image_directory_hierarchical("images/rawdata")
 create_feature_table("images/train3", "images/featureTableTrain")
 create_feature_table("images/test3", "images/featureTableTest")
 create_feature_table("images/val3", "images/featureTableVal")
+
+
+##
+def split_image_directory_recognition(directory):
+    """
+    split folder with hierarchical order of images in train (85%) and test (15%)
+    :param directory: directory of image folders
+    :return: -
+    """
+    folders = os.listdir(directory)
+    file_group_list = {}
+    for file in folders:
+        if file == ".DS_Store":
+            continue
+        file_group = file.split("_")[0]
+
+        if file_group in file_group_list:
+            file_group_list[file_group].append(file)
+        else:
+            file_group_list[file_group] = [file]
+
+    train = []
+    test = []
+    for file_group, files in file_group_list.items():
+        random.seed(0)
+        random.shuffle(files)
+        train.extend(files[0:int(len(files) * 0.75)])
+        test.extend(files[int(len(files) * 0.75):])
+
+    for file in train:
+        shutil.copy(directory + "/" + file, "images/milestone4/train/" + file)
+    for file in test:
+        shutil.copy(directory + "/" + file, "images/milestone4/test/" + file)
+
+##

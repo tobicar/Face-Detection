@@ -88,10 +88,10 @@ database_list = np.array(database_list)
 
 ## random generated database
 #images_db, database_list = generate_database("/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces", 10)
-images_db, database_list = generate_database("C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\cfp_data", 5)
+images_db, database_list = generate_database("C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\rawdata4", 5)
 ## choose image to predict
 #IMG_TO_PREDICT_PATH = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces/Zac Efron_4.jpg"
-IMG_TO_PREDICT_PATH = "C:\\Users\\Svea Worms\\Downloads\\svea.jpg"
+IMG_TO_PREDICT_PATH = "C:\\Users\\Svea Worms\\Downloads\\predictions\\tom.jpeg"
 img = decode_image(IMG_TO_PREDICT_PATH)
 image_list = np.array([img]*len(images_db))
 image_list_1 = image_list[0:int(len(image_list)*0.5)]
@@ -104,21 +104,22 @@ TRIPLET_LOSS_MODEL = True
 if TRIPLET_LOSS_MODEL:
     prediction_1 = siamese_model.predict([image_list_1, database_list_1, database_list_1])
     prediction_2 = siamese_model.predict([image_list_2, database_list_2, database_list_2])
-    prediction = np.concatenate(prediction_1[0], prediction_2[0])
+    prediction = np.append(prediction_1[0], prediction_2[0])
     images_db["pred"] = prediction
 else:
     prediction = model2.predict([image_list, database_list])
     images_db["pred"] = prediction
 pred_class = images_db.groupby("class").apply(lambda x: x['pred'].sum()/len(x))
-top4 = pred_class.nsmallest(4)
+pred_class_min = images_db.groupby("class").min()["pred"]
+top4_min = pred_class_min.nsmallest(3)
+top4 = pred_class.nsmallest(3)
 
 fig, ax = plt.subplots()
 ax.imshow(tf.keras.preprocessing.image.array_to_img(img))
 textstr = '\n'.join((
-                r'1. %s: %.2f' % (top4.index[0], top4[0],),
-                r'2. %s: %.2f' % (top4.index[1], top4[1],),
-                r'3. %s: %.2f' % (top4.index[2], top4[2],),
-                r'4. %s: %.2f' % (top4.index[3], top4[3],)
+                '1. \n mean: %s: %.2f \n min:  %s: %.2f' % (top4.index[0], top4[0], top4_min.index[0], top4_min[0]),
+                '2. \n mean: %s: %.2f \n min: %s: %.2f' % (top4.index[1], top4[1], top4_min.index[1], top4_min[1]),
+                '3. \n mean: %s: %.2f \n min: %s: %.2f' % (top4.index[2], top4[2], top4_min.index[2], top4_min[2])
 ))
 props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 ax.text(240, 112, textstr, fontsize=14, bbox=props, verticalalignment="center")
