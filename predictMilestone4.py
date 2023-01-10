@@ -88,17 +88,24 @@ database_list = np.array(database_list)
 
 ## random generated database
 #images_db, database_list = generate_database("/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces", 10)
-images_db, database_list = generate_database("C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\rawdata4", 10)
+images_db, database_list = generate_database("C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\cfp_data", 5)
 ## choose image to predict
 #IMG_TO_PREDICT_PATH = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces/Zac Efron_4.jpg"
-IMG_TO_PREDICT_PATH = "C:\\Users\\Svea Worms\\Downloads\\tom18.jpg"
+IMG_TO_PREDICT_PATH = "C:\\Users\\Svea Worms\\Downloads\\svea.jpg"
 img = decode_image(IMG_TO_PREDICT_PATH)
 image_list = np.array([img]*len(images_db))
+image_list_1 = image_list[0:int(len(image_list)*0.5)]
+image_list_2 = image_list[int(len(image_list)*0.5):]
 ##
+database_list_1 = database_list[0:int(len(database_list)*0.5)]
+database_list_2 = database_list[int(len(database_list)*0.5):]
+
 TRIPLET_LOSS_MODEL = True
 if TRIPLET_LOSS_MODEL:
-    prediction = siamese_model.predict([image_list, database_list,database_list])
-    images_db["pred"] = prediction[0]
+    prediction_1 = siamese_model.predict([image_list_1, database_list_1, database_list_1])
+    prediction_2 = siamese_model.predict([image_list_2, database_list_2, database_list_2])
+    prediction = np.concatenate(prediction_1[0], prediction_2[0])
+    images_db["pred"] = prediction
 else:
     prediction = model2.predict([image_list, database_list])
     images_db["pred"] = prediction

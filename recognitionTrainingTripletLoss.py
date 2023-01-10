@@ -287,7 +287,7 @@ def make_triplets_utk(image_paths, image_paths_utk, image_classes, num=5):
 
 ##
 
-image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\rawdata4"
+image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\cfp_data"
 #image_path = r"C:\Users\svea\PycharmProjects\Face-Detection\images\rawdata4"
 
 #MAC OS
@@ -309,7 +309,7 @@ directory_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\utk
 subfiles = [directory_path + "/" + f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
 
 
-triplets = make_triplets_utk(images_df["path"], subfiles, images_df["class"])
+triplets = make_triplets_utk(images_df["path"], subfiles, images_df["class"], num=9)
 
 ## online strategy
 
@@ -388,7 +388,7 @@ siamese_model.compile(optimizer='adam', loss=triplet_loss, metrics=["accuracy", 
 ##
 history = siamese_model.fit(ds_train, epochs=10, validation_data=ds_val)
 ## save weights
-siamese_model.save_weights("saved_model/Milestone4/tripletLoss_20epochs_alpha025_weights_utk/siamese_net")
+siamese_model.save_weights("saved_model/Milestone4/tripletLoss_10epochs_alpha025_weights_utk_cfp/siamese_net")
 
 ## load weights
 # model vorher erstellen
