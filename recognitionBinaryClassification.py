@@ -26,7 +26,7 @@ def euclidean_distance(vects):
     return tf.math.sqrt(tf.math.maximum(sum_square, tf.keras.backend.epsilon()))
 
 ##
-def create_model(alpha=1, debug=False):
+def create_model(alpha=1, debug=False, mode="flatten"):
     #TODO: train with global average pooling and with flatten layer
     left_input = tf.keras.Input(shape=(224, 224, 3), name='input_left')
     right_input = tf.keras.Input(shape=(224, 224, 3), name='input_right')
@@ -35,15 +35,19 @@ def create_model(alpha=1, debug=False):
     model_pretrained.trainable = False
     feature_extractor = tf.keras.applications.mobilenet.preprocess_input(input)
     pretrained_head = model_pretrained(feature_extractor, training=False)
-    #feature_generator = tf.keras.layers.GlobalAveragePooling2D()(feature_generator)
-    feature_generator = tf.keras.layers.Flatten()(pretrained_head)
+    if mode.lower() == "flatten":
+        feature_generator = tf.keras.layers.Flatten()(pretrained_head)
+    else:
+        feature_generator = tf.keras.layers.GlobalAveragePooling2D()(pretrained_head)
     #feature_generator = tf.keras.layers.Dropout(0.2)(feature_generator)
-    feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
-    feature_generator = tf.keras.layers.Dense(512, activation='relu')(feature_generator)
-    feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+    #feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+    #feature_generator = tf.keras.layers.Dense(512, activation='relu')(feature_generator)
+    #feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+    feature_generator = tf.keras.layers.Dropout(0.2)(feature_generator)
     feature_generator = tf.keras.layers.Dense(256, activation="relu")(feature_generator)
     feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
-    output = tf.keras.layers.Dense(256)(feature_generator)
+    feature_generator = tf.keras.layers.Dropout(0.2)(feature_generator)
+    output = tf.keras.layers.Dense(128)(feature_generator)
 
     feature_model = tf.keras.Model(input, output, name="feature_generator")
     if debug:
@@ -111,7 +115,7 @@ len(images_df.groupby("class").count())
 ##
 
 
-def make_pairs(image_path, image_class, num=5):
+def make_pairs(image_path, image_class, num=2, negative_path="/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/utkcropped", num_random_img=5):
 
     #array with names of all class labels
     all_class_labels = image_class.unique().tolist()
@@ -120,6 +124,13 @@ def make_pairs(image_path, image_class, num=5):
 
     pairs = []
     labels = []
+
+    # load random negative face pictures (utk_cropped)
+    random_images = sorted([str(negative_path + "/" + f) for f in os.listdir(negative_path)])
+    random_images_df = pd.DataFrame(random_images, columns=["path"])
+    random_images_df = random_images_df[random_images_df["path"] != "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/utkcropped/.DS_Store"]
+    random_images_df = random_images_df.reset_index(drop=True)
+
 
     for idx1 in range(len(image_path)):
         # add a matching example
@@ -154,6 +165,11 @@ def make_pairs(image_path, image_class, num=5):
             x2 = image_path[idx2]
 
             pairs += [[first_image_path, x2]]
+            labels += [1]
+
+        x_random_negatives = random.sample(random_images_df["path"].to_list(), k=num_random_img)
+        for random_pic in x_random_negatives:
+            pairs += [[first_image_path, random_pic]]
             labels += [1]
 
     return np.array(pairs), np.array(labels).astype("float32")
@@ -207,12 +223,14 @@ ds_test = ds_test.prefetch(8)
 
 
 ## train the model
-EPOCHS = 10
+EPOCHS = 20
 BATCH_SIZE = 32
 model = create_model()
 model = compile_model(model)
 model.summary()
 history = model.fit(ds_train, validation_data=ds_val, epochs=EPOCHS)
+##
+model.save("saved_model/Milestone4/binaryClassification_10epochs_alpha1_v2")
 
 ##
 

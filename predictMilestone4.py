@@ -18,6 +18,24 @@ def contrastive_loss(y_true, y_pred, margin=1):
     return tf.keras.backend.mean((1 - y_true) * square_pred + y_true * margin_square)
 
 
+def triplet_loss(y_true, y_pred):
+    margin = 1
+    ap_distance = y_pred[:, 0, :]
+    an_distance = y_pred[:, 1, :]
+    loss = ap_distance - an_distance
+    loss = tf.maximum(loss + margin, 0.0)
+    return loss
+
+
+def triplet_accuracy(y_true, y_pred):
+    # Calculate the distance between the anchor point and the positive point
+    pos_dist = tf.reduce_sum(tf.square(y_pred[:, 0, :] - y_pred[:, 1, :]), axis=1)
+    # Calculate the distance between the anchor point and the negative point
+    neg_dist = tf.reduce_sum(tf.square(y_pred[:, 0, :] - y_pred[:, 2, :]), axis=1)
+    # Calculate the accuracy as the percentage of triplets for which the positive distance is less than the negative distance
+    accuracy = tf.reduce_mean(tf.cast(pos_dist < neg_dist, dtype=tf.float32))
+    return accuracy
+
 def decode_image(img_path):
     image_size = (224, 224)
     num_channels = 3
@@ -29,15 +47,33 @@ def decode_image(img_path):
     img = tf.image.resize(img, image_size, method="bilinear")
     img.set_shape((image_size[0], image_size[1], num_channels))
     return img
+
+## generate database with n random picks from each person
+def generate_database(file_path, number_of_samples=4):
+    images = sorted([(str(file_path + "/" + f), str(f.split("_")[0])) for f in os.listdir(file_path)])
+    images_df = pd.DataFrame(images, columns=["path", "class"])
+    images_df = images_df[images_df["class"] != ".DS"]
+
+    database = []
+    for label,grouped_subframe in images_df.groupby("class"):
+        random_rows = grouped_subframe.sample(number_of_samples, random_state=42)
+        database.append(random_rows)
+
+    database_frame = pd.concat(database, ignore_index=True)
+    database_list = [decode_image(f) for f in database_frame["path"]]
+    database_list = np.array(database_list)
+    return database_frame, database_list
 ##
 PATH_TO_DATABASE = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/database"
-PATH_TO_MODEL = "saved_model/Milestone4/binaryClassification_10epochs_alpha1"
-PATH_TO_MODEL2 = "saved_model/Milestone4/binaryClassification_10epochs_alpha1_v2"
+#PATH_TO_MODEL = "saved_model/Milestone4/binaryClassification_10epochs_alpha1"
+#PATH_TO_MODEL2 = "saved_model/Milestone4/binaryClassification_20epochs_alpha1_flatten"
+PATH_TO_MODEL_TRIPLET = "saved_model/Milestone4/tripletLoss_new"
 
 
-model = tf.keras.models.load_model(PATH_TO_MODEL, custom_objects={"contrastive_loss": contrastive_loss})
-model2 = tf.keras.models.load_model(PATH_TO_MODEL2, custom_objects={"contrastive_loss": contrastive_loss})
-##
+#model = tf.keras.models.load_model(PATH_TO_MODEL, custom_objects={"contrastive_loss": contrastive_loss})
+#model2 = tf.keras.models.load_model(PATH_TO_MODEL2, custom_objects={"contrastive_loss": contrastive_loss})#
+model_triplet = tf.keras.models.load_model(PATH_TO_MODEL_TRIPLET, custom_objects={"triplet_loss": triplet_loss, "triplet_accuracy": triplet_accuracy})
+## take human generated database
 images = sorted([(str(PATH_TO_DATABASE +  "/" +  f), str(f.split("_")[0])) for f in os.listdir(PATH_TO_DATABASE)])
 
 images_df = pd.DataFrame(images,columns=["path","class"])
@@ -49,13 +85,22 @@ len(images_df.groupby("class").count())
 database_list = [decode_image(f) for f in images_df["path"]]
 database_list = np.array(database_list)
 
+
+## random generated database
+images_df, database_list = generate_database("/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces", 10)
+
 ## choose image to predict
-IMG_TO_PREDICT = "/Users/tobias/Downloads/Bild.jpeg"
-img = decode_image(IMG_TO_PREDICT)
+IMG_TO_PREDICT_PATH = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces/Zac Efron_4.jpg"
+img = decode_image(IMG_TO_PREDICT_PATH)
 image_list = np.array([img]*len(images_df))
 ##
-prediction = model2.predict([image_list, database_list])
-images_df["pred"] = prediction
+TRIPLET_LOSS_MODEL = True
+if TRIPLET_LOSS_MODEL:
+    prediction = siamese_model.predict([image_list, database_list,database_list])
+    images_df["pred"] = prediction[0]
+else:
+    prediction = model2.predict([image_list, database_list])
+    images_df["pred"] = prediction
 pred_class = images_df.groupby("class").apply(lambda x: x['pred'].sum()/len(x))
 top4 = pred_class.nsmallest(4)
 
@@ -76,16 +121,20 @@ plt.show()
 ## predict two images
 IMAGE_PATH_1 = "/Users/tobias/Downloads/zac.jpg"
 IMAGE_PATH_2 = "/Users/tobias/Downloads/zac.jpg"
+IMAGE_PATH_3 = "/Users/tobias/Downloads/Bild.jpeg"
 img1 = decode_image(IMAGE_PATH_1)
 img1 = tf.expand_dims(img1, axis=0)
 img2 = decode_image(IMAGE_PATH_2)
 img2 = tf.expand_dims(img2, axis=0)
+img3 = decode_image(IMAGE_PATH_3)
+img3 = tf.expand_dims(img3, axis=0)
 prediction = model2.predict([img1, img2])
 
 
-## generate database with n random picks from each person
-def generate_database(file_path):
-    pass
+
+
+
+
 
 
 

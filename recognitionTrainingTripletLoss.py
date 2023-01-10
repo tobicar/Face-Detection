@@ -5,7 +5,8 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 import helper
-
+import matplotlib.pyplot as plt
+##
 
 class DistanceLayer(tf.keras.layers.Layer):
     """
@@ -40,8 +41,8 @@ class SiameseModel(tf.keras.Model):
         self.loss_tracker = tf.metrics.Mean(name="loss")
 
     def call(self, inputs, training=None, mask=None):
-        self.build(inputs.shape)
-        return self.siamese_network(inputs)
+        #self.build(inputs.shape)
+        return self.siamese_network(inputs, training=training, mask=mask)
 
     def train_step(self, data):
         # GradientTape is a context manager that records every operation that
@@ -149,7 +150,7 @@ def create_model(alpha=0.25, debug=False):
     siamese_net = tf.keras.Model(inputs=[anchor_input, positive_input, negative_input], outputs=distances)
     return siamese_net
 
-
+@tf.function
 def triplet_loss(y_true, y_pred):
     margin = 1
     ap_distance = y_pred[:, 0, :]
@@ -163,7 +164,7 @@ def triplet_loss(y_true, y_pred):
 #    margin = 0
 #    pred = (ap_distance - an_distance - margin).cpu().data
 #    return (pred > 0).sum() * 1.0 / ap_distance.size()[0]
-
+@tf.function
 def triplet_accuracy(y_true, y_pred):
     # Calculate the distance between the anchor point and the positive point
     pos_dist = tf.reduce_sum(tf.square(y_pred[:, 0, :] - y_pred[:, 1, :]), axis=1)
@@ -204,15 +205,7 @@ def preprocess_triplets_array(filepath_anchor, filepath_positive, filepath_negat
             "negative": decode_image(filepath_negative)}
 
 
-# image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\rawdata4"
-image_path = r"C:\Users\svea\PycharmProjects\Face-Detection\images\rawdata4"
-# images = sorted([str(image_path +  "/" +  f) for f in os.listdir(image_path)])
 
-images = sorted([(str(image_path + "\\" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
-
-images_df = pd.DataFrame(images, columns=["path", "class"])
-
-len(images_df.groupby("class").count())
 
 
 # train test split durchführen
@@ -319,16 +312,35 @@ def make_triplets_utk(image_paths, image_paths_utk, image_classes, num=5):
 
 
 ##
+
+# image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\rawdata4"
+#image_path = r"C:\Users\svea\PycharmProjects\Face-Detection\images\rawdata4"
+
+#MAC OS
+image_path = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces"
+# images = sorted([str(image_path +  "/" +  f) for f in os.listdir(image_path)])
+
+#images = sorted([(str(image_path + "\\" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
+#MAC OS
+images = sorted([(str(image_path + "/" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
+
+images_df = pd.DataFrame(images, columns=["path", "class"])
+
+len(images_df.groupby("class").count())
 # generate tensorflow dataset
-directory = r"C:\Users\svea\PycharmProjects\Face-Detection\images\utkCropped\utkcropped\utkcropped"
-subfiles = [directory + "\\" + f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+#directory_patg = r"C:\Users\svea\PycharmProjects\Face-Detection\images\utkCropped\utkcropped\utkcropped"
+#subfiles = [directory_path + "\\" + f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
+#MAC OS
+directory_path = r"/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/utkcropped"
+subfiles = [directory_path + "/" + f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
+
 
 triplets = make_triplets_utk(images_df["path"], subfiles, images_df["class"])
 
 ## online strategy
 
 random.seed(0)
-random.shuffle(triplets)
+random.shuffle(triplets) #TODO: Das tut gar nichts!!
 train_large = triplets[0:int(len(triplets) * 0.70)]
 test_large = triplets[int(len(triplets) * 0.70):int(len(triplets) * 0.85)]
 val_large = triplets[int(len(triplets) * 0.85):]
@@ -359,13 +371,49 @@ ds_val = ds_val.batch(32)
 
 ##
 EPOCHS = 10
-model = create_model()
-siamese_model = SiameseModel(model)
+#model = create_model()
+
+@tf.function
+def normalize(x):
+    return tf.math.l2_normalize(x, axis=-1)
+
+
+# ----- create the model -------
+anchor_input = tf.keras.Input(name="anchor", shape=(224, 224, 3))
+positive_input = tf.keras.Input(name="positive", shape=(224, 224, 3))
+negative_input = tf.keras.Input(name="negative", shape=(224, 224, 3))
+input = tf.keras.Input(shape=(224, 224, 3), name='input')
+model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=0.25)
+model_pretrained.trainable = False
+feature_extractor = tf.keras.applications.mobilenet.preprocess_input(input)
+feature_generator = model_pretrained(feature_extractor)
+feature_generator = tf.keras.layers.GlobalAveragePooling2D()(feature_generator)
+# feature_generator = tf.keras.layers.Flatten()(feature_generator)
+feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
+feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+feature_generator = tf.keras.layers.Dense(256, activation='relu')(feature_generator)
+feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
+feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+feature_generator = tf.keras.layers.Dense(128, activation='relu')(feature_generator)
+feature_generator = tf.keras.layers.Lambda(normalize)(feature_generator)
+
+feature_model = tf.keras.Model(input, feature_generator, name="feature_generator")
+
+# distantf.keras.layers.concatenate([embedding_anchor, embedding_positive, embedding_negative], axis=1)
+distances = DistanceLayer()(
+    feature_model(anchor_input),
+    feature_model(positive_input),
+    feature_model(negative_input),
+)
+
+siamese_net = tf.keras.Model(inputs=[anchor_input, positive_input, negative_input], outputs=distances)
+# ---- end of creation of the model -----
+siamese_model = SiameseModel(siamese_net)
 siamese_model.compile(optimizer='adam', loss=triplet_loss, metrics=["accuracy", "precision", triplet_accuracy])
 # = compile_model(siamese_model)
 ##
 history = siamese_model.fit(ds_train, epochs=10, validation_data=ds_val)
-# save weights
+## save weights
 siamese_model.save_weights("saved_model/Milestone4/tripletLoss_10epochs_alpha025_weights_utk/siamese_net")
 
 ## load weights
@@ -376,3 +424,19 @@ load_status = siamese_model.load_weights("saved_model/Milestone4/tripletLoss_10e
 # siamese_model.save("saved_model/Milestone4/tripletLoss_10epochs_alpha025")
 ##
 tf.saved_model.save(siamese_model, "saved_model/Milestone4/tripletLoss_10epochs_alpha025")
+
+## visualize one sample
+
+def visualize(number_of_sample, anchor, positive, negative):
+    """Visualize one triplet from the supplied batch."""
+
+    def show(ax, image):
+        ax.imshow(image)
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+
+    fig = plt.figure(figsize=(3, 1))
+    axs = fig.subplots(3, 1)
+    show(axs[0], tf.keras.preprocessing.image.array_to_img(anchor[number_of_sample]))
+    show(axs[1], tf.keras.preprocessing.image.array_to_img(positive[number_of_sample]))
+    show(axs[2], tf.keras.preprocessing.image.array_to_img(negative[number_of_sample]))
