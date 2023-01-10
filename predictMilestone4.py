@@ -76,32 +76,33 @@ model_triplet = tf.keras.models.load_model(PATH_TO_MODEL_TRIPLET, custom_objects
 ## take human generated database
 images = sorted([(str(PATH_TO_DATABASE +  "/" +  f), str(f.split("_")[0])) for f in os.listdir(PATH_TO_DATABASE)])
 
-images_df = pd.DataFrame(images,columns=["path","class"])
+images_db = pd.DataFrame(images,columns=["path","class"])
 
-images_df = images_df[images_df["class"] != ".DS"]
+images_db = images_db[images_db["class"] != ".DS"]
 
-len(images_df.groupby("class").count())
+len(images_db.groupby("class").count())
 
-database_list = [decode_image(f) for f in images_df["path"]]
+database_list = [decode_image(f) for f in images_db["path"]]
 database_list = np.array(database_list)
 
 
 ## random generated database
-images_df, database_list = generate_database("/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces", 10)
-
+#images_db, database_list = generate_database("/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces", 10)
+images_db, database_list = generate_database("C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\rawdata4", 10)
 ## choose image to predict
-IMG_TO_PREDICT_PATH = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces/Zac Efron_4.jpg"
+#IMG_TO_PREDICT_PATH = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces/Zac Efron_4.jpg"
+IMG_TO_PREDICT_PATH = "C:\\Users\\Svea Worms\\Downloads\\tom18.jpg"
 img = decode_image(IMG_TO_PREDICT_PATH)
-image_list = np.array([img]*len(images_df))
+image_list = np.array([img]*len(images_db))
 ##
 TRIPLET_LOSS_MODEL = True
 if TRIPLET_LOSS_MODEL:
     prediction = siamese_model.predict([image_list, database_list,database_list])
-    images_df["pred"] = prediction[0]
+    images_db["pred"] = prediction[0]
 else:
     prediction = model2.predict([image_list, database_list])
-    images_df["pred"] = prediction
-pred_class = images_df.groupby("class").apply(lambda x: x['pred'].sum()/len(x))
+    images_db["pred"] = prediction
+pred_class = images_db.groupby("class").apply(lambda x: x['pred'].sum()/len(x))
 top4 = pred_class.nsmallest(4)
 
 fig, ax = plt.subplots()

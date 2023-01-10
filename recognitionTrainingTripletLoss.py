@@ -209,8 +209,6 @@ def preprocess_triplets_array(filepath_anchor, filepath_positive, filepath_negat
 
 
 # train test split durchführen
-
-
 def make_triplets(image_paths, image_classes, num=5):
     num_classes = image_classes.unique().tolist()
     digit_indices = [(np.where(image_classes == image_class)[0], image_class) for image_class in num_classes]
@@ -244,30 +242,6 @@ def make_triplets(image_paths, image_classes, num=5):
             print(anchor_path)
             print(positive_path)
             print(negative_path + "\n")
-
-        # print(len(triplets))
-
-        # all triplets (ca. 6 Mio.)
-        #
-        # find matching example
-        # for positive_id in digit_indices[anchor_class_id][0]:
-        #    #positive_id = random.choice(digit_indices[anchor_class_id][0])
-        #    if anchor_id == positive_id:
-        #        continue
-        #    positive_path = image_paths[positive_id]
-        #
-        # find non-matching example
-        #    for negative_class in num_classes:
-        #        if negative_class == anchor_class:
-        #            continue
-        #        negative_class_id = int(np.where(np.array(num_classes) == negative_class)[0][0])
-        #        negative_id = random.choice(digit_indices[negative_class_id][0])
-        #        negative_path = image_paths[negative_id]
-        #        triplets += [[anchor_path, positive_path, negative_path]]
-
-        #        print(anchor_path)
-        #        print(positive_path)
-        #        print(negative_path + "\n")
 
     return np.array(triplets)
 
@@ -313,25 +287,25 @@ def make_triplets_utk(image_paths, image_paths_utk, image_classes, num=5):
 
 ##
 
-# image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\rawdata4"
+image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\rawdata4"
 #image_path = r"C:\Users\svea\PycharmProjects\Face-Detection\images\rawdata4"
 
 #MAC OS
-image_path = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces"
+#image_path = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces"
 # images = sorted([str(image_path +  "/" +  f) for f in os.listdir(image_path)])
 
-#images = sorted([(str(image_path + "\\" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
+images = sorted([(str(image_path + "\\" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
 #MAC OS
-images = sorted([(str(image_path + "/" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
+#images = sorted([(str(image_path + "/" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
 
 images_df = pd.DataFrame(images, columns=["path", "class"])
 
 len(images_df.groupby("class").count())
 # generate tensorflow dataset
-#directory_patg = r"C:\Users\svea\PycharmProjects\Face-Detection\images\utkCropped\utkcropped\utkcropped"
+directory_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\utkCropped\utkcropped\utkcropped"
 #subfiles = [directory_path + "\\" + f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
 #MAC OS
-directory_path = r"/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/utkcropped"
+#directory_path = r"/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/utkcropped"
 subfiles = [directory_path + "/" + f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
 
 
@@ -339,8 +313,8 @@ triplets = make_triplets_utk(images_df["path"], subfiles, images_df["class"])
 
 ## online strategy
 
-random.seed(0)
-random.shuffle(triplets) #TODO: Das tut gar nichts!!
+np.random.seed(123)
+np.random.shuffle(triplets)
 train_large = triplets[0:int(len(triplets) * 0.70)]
 test_large = triplets[int(len(triplets) * 0.70):int(len(triplets) * 0.85)]
 val_large = triplets[int(len(triplets) * 0.85):]
@@ -414,10 +388,10 @@ siamese_model.compile(optimizer='adam', loss=triplet_loss, metrics=["accuracy", 
 ##
 history = siamese_model.fit(ds_train, epochs=10, validation_data=ds_val)
 ## save weights
-siamese_model.save_weights("saved_model/Milestone4/tripletLoss_10epochs_alpha025_weights_utk/siamese_net")
+siamese_model.save_weights("saved_model/Milestone4/tripletLoss_20epochs_alpha025_weights_utk/siamese_net")
 
 ## load weights
-model = create_model()
+# model vorher erstellen
 siamese_model = SiameseModel(model)
 siamese_model.compile(optimizer='adam', loss=triplet_loss, metrics=["accuracy", "precision", triplet_accuracy])
 load_status = siamese_model.load_weights("saved_model/Milestone4/tripletLoss_10epochs_alpha025_weights/siamese_net")
