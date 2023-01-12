@@ -209,5 +209,22 @@ history = model.fit(ds_train, validation_data=ds_val, epochs=EPOCHS)
 ##
 model.save("saved_model/Milestone4/binaryClassification_15epochs_alpha1_onlyTrain_utk_pooling")
 
+## visualize one sample
+
+def visualize(pic, label):
+    """Visualize one triplet from the supplied batch."""
+
+    def show(ax, image):
+        ax.imshow(image)
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+
+    fig = plt.figure(figsize=(2, 1))
+    axs = fig.subplots(2, 1)
+    print()
+    show(axs[0], tf.keras.preprocessing.image.array_to_img(pic["input_left"][0]))
+    show(axs[1], tf.keras.preprocessing.image.array_to_img(pic["input_right"][0]))
+
+
 ##
 
