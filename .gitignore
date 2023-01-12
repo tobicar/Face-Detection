@@ -82,3 +82,4 @@ images/
 part2/
 part3/
 /saved_model/model_resnet5010epochs_32batch/
+/saved_model/Milestone4/binaryClassification_15epochs_alpha1_onlyTrain_utk/
