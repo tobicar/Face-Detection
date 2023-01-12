@@ -39,14 +39,11 @@ def create_model(alpha=1, debug=False, mode="flatten"):
         feature_generator = tf.keras.layers.Flatten()(pretrained_head)
     else:
         feature_generator = tf.keras.layers.GlobalAveragePooling2D()(pretrained_head)
-    #feature_generator = tf.keras.layers.Dropout(0.2)(feature_generator)
-    #feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
-    #feature_generator = tf.keras.layers.Dense(512, activation='relu')(feature_generator)
-    #feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
-    feature_generator = tf.keras.layers.Dropout(0.2)(feature_generator)
+    feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+    feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
     feature_generator = tf.keras.layers.Dense(256, activation="relu")(feature_generator)
     feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
-    feature_generator = tf.keras.layers.Dropout(0.2)(feature_generator)
+    feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
     output = tf.keras.layers.Dense(128)(feature_generator)
 
     feature_model = tf.keras.Model(input, output, name="feature_generator")
@@ -61,7 +58,7 @@ def create_model(alpha=1, debug=False, mode="flatten"):
     #normal_layer = tf.keras.layers.BatchNormalization()(merge_layer)
     #prediction = tf.keras.layers.Dense(1, activation="sigmoid")(merge_layer)
     siamese_net = tf.keras.Model(inputs=[left_input, right_input], outputs=prediction)
-    return siamese_net
+    return siamese_net, feature_model
 
 
 def contrastive_loss(y_true, y_pred, margin=1):
@@ -101,7 +98,8 @@ def preprocess_binary(picture1, picture2):
 def preprocess_binary_array(filepath1, filepath2, label):
     return {"input_left": decode_image(filepath1), "input_right": decode_image(filepath2)}, label
 
-image_path = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces"
+image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\train"
+#image_path = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces"
 #images = sorted([str(image_path +  "/" +  f) for f in os.listdir(image_path)])
 
 images = sorted([(str(image_path +  "/" +  f), str(f.split("_")[0])) for f in os.listdir(image_path)])
@@ -115,7 +113,7 @@ len(images_df.groupby("class").count())
 ##
 
 
-def make_pairs(image_path, image_class, num=2, negative_path="/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/utkcropped", num_random_img=5):
+def make_pairs(image_path, image_class, num=22, negative_path="/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/utkcropped", num_random_img=10):
 
     #array with names of all class labels
     all_class_labels = image_class.unique().tolist()
@@ -157,7 +155,7 @@ def make_pairs(image_path, image_class, num=2, negative_path="/Users/tobias/Pych
         # remove the label of the first image from the list
         sec_class_list.remove(first_image_class)
         # choose x random class labels from the list of people
-        class_label2_list = random.sample(sec_class_list, k=num)
+        class_label2_list = random.sample(sec_class_list, k=(num-num_random_img))
         # for each class choose one random picture
         for class_label2 in class_label2_list:
             class_label2_idx = np.where(np.array(all_class_labels) == class_label2)[0][0]
@@ -174,24 +172,22 @@ def make_pairs(image_path, image_class, num=2, negative_path="/Users/tobias/Pych
 
     return np.array(pairs), np.array(labels).astype("float32")
 
+
 ## generate tensorflow dataset
-pairs = make_pairs(images_df["path"],images_df["class"])
+utk_cropped_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\utkCropped\utkcropped"
+pairs = make_pairs(images_df["path"],images_df["class"], negative_path=utk_cropped_path)
 ##
 np.random.RandomState(seed=32).shuffle(pairs[0])
 np.random.RandomState(seed=32).shuffle(pairs[1])
 
-train = pairs[0][0:int(len(pairs[0]) * 0.70)]
-val = pairs[0][int(len(pairs[0]) * 0.85):]
-test = pairs[0][int(len(pairs[0]) * 0.70):int(len(pairs[0]) * 0.85)]
+train = pairs[0][0:int(len(pairs[0]) * 0.75)]
+val = pairs[0][int(len(pairs[0]) * 0.75):]
 
-train_label = pairs[1][0:int(len(pairs[1]) * 0.70)]
-val_label = pairs[1][int(len(pairs[1]) * 0.85):]
-test_label = pairs[1][int(len(pairs[1]) * 0.70):int(len(pairs[1]) * 0.85)]
-
+train_label = pairs[1][0:int(len(pairs[1]) * 0.75)]
+val_label = pairs[1][int(len(pairs[1]) * 0.75):]
 
 data_train = tf.data.Dataset.from_tensor_slices((train[:, 0], train[:, 1], train_label))
 data_val = tf.data.Dataset.from_tensor_slices((val[:, 0], val[:, 1], val_label))
-data_test = tf.data.Dataset.from_tensor_slices((test[:, 0], test[:, 1], test_label))
 
 ds_train = data_train.map(preprocess_binary_array)
 ds_train = ds_train.batch(32)
@@ -201,36 +197,17 @@ ds_val = data_val.map(preprocess_binary_array)
 ds_val = ds_val.batch(32)
 ds_val = ds_val.prefetch(8)
 
-ds_test = data_test.map(preprocess_binary_array)
-ds_test = ds_test.batch(1)
-ds_test = ds_test.prefetch(8)
-
-
-
-#data = tf.data.Dataset.from_tensor_slices((pairs[0][:,0],pairs[0][:,1],pairs[1]))
-#ds = data.map(preprocess_binary_array)
-#ds = ds.batch(32)
-#number_of_samples = len(pairs[1])
-# Let's now split our dataset in train and validation.
-#train_dataset = ds.take(round(number_of_samples * 0.8))
-#val_dataset = ds.skip(round(number_of_samples * 0.8))
-
-#train_dataset = train_dataset.batch(32)
-#train_dataset = train_dataset.prefetch(8)
-
-#val_dataset = val_dataset.batch(32)
-#val_dataset = val_dataset.prefetch(8)
-
 
 ## train the model
-EPOCHS = 20
+EPOCHS = 15
 BATCH_SIZE = 32
-model = create_model()
+model, feature_generator = create_model(mode="pooling")
 model = compile_model(model)
 model.summary()
+##
 history = model.fit(ds_train, validation_data=ds_val, epochs=EPOCHS)
 ##
-model.save("saved_model/Milestone4/binaryClassification_10epochs_alpha1_v2")
+model.save("saved_model/Milestone4/binaryClassification_15epochs_alpha1_onlyTrain_utk_pooling")
 
 ##
 

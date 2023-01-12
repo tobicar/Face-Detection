@@ -375,9 +375,9 @@ siamese_model.save_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_w
 
 ## load weights
 # model vorher erstellen
-siamese_model = SiameseModel(model)
-siamese_model.compile(optimizer='adam', loss=triplet_loss, metrics=["accuracy", "precision", triplet_accuracy])
-load_status = siamese_model.load_weights("saved_model/Milestone4/tripletLoss_10epochs_alpha025_weights/siamese_net")
+#siamese_model = SiameseModel(model)
+#siamese_model.compile(optimizer='adam', loss=triplet_loss, metrics=["accuracy", "precision", triplet_accuracy])
+load_status = siamese_model.load_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain_utk/siamese_net")
 # siamese_model.save("saved_model/Milestone4/tripletLoss_10epochs_alpha025")
 ##
 tf.saved_model.save(siamese_model, "saved_model/Milestone4/tripletLoss_10epochs_alpha025")

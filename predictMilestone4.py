@@ -91,7 +91,7 @@ database_list = np.array(database_list)
 images_db, database_list = generate_database("C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\rawdata4", 5)
 ## choose image to predict
 #IMG_TO_PREDICT_PATH = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces/Zac Efron_4.jpg"
-IMG_TO_PREDICT_PATH = "C:\\Users\\Svea Worms\\Downloads\\predictions\\tom.jpeg"
+IMG_TO_PREDICT_PATH = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\test\Ellen Degeneres_55.jpg"
 img = decode_image(IMG_TO_PREDICT_PATH)
 image_list = np.array([img]*len(images_db))
 image_list_1 = image_list[0:int(len(image_list)*0.5)]
@@ -128,25 +128,76 @@ plt.show()
 
 
 ## predict two images
-IMAGE_PATH_1 = "/Users/tobias/Downloads/zac.jpg"
-IMAGE_PATH_2 = "/Users/tobias/Downloads/zac.jpg"
-IMAGE_PATH_3 = "/Users/tobias/Downloads/Bild.jpeg"
+#IMAGE_PATH_1 = "/Users/tobias/Downloads/zac.jpg"
+#IMAGE_PATH_2 = "/Users/tobias/Downloads/zac.jpg"
+IMAGE_PATH_1 = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\test\Akshay Kumar_8.jpg"
+IMAGE_PATH_2 = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\train\Alexandra Daddario_0.jpg"
+#IMAGE_PATH_3 = "/Users/tobias/Downloads/Bild.jpeg"
 img1 = decode_image(IMAGE_PATH_1)
 img1 = tf.expand_dims(img1, axis=0)
 img2 = decode_image(IMAGE_PATH_2)
 img2 = tf.expand_dims(img2, axis=0)
-img3 = decode_image(IMAGE_PATH_3)
-img3 = tf.expand_dims(img3, axis=0)
-prediction = model2.predict([img1, img2])
+#img3 = decode_image(IMAGE_PATH_3)
+#img3 = tf.expand_dims(img3, axis=0)
+prediction = model.predict([img1, img2])
+print(prediction)
+##
+def evaluateTestset(threshold, images_db, database_list, path_to_testset, mac_os, siamese_model):
+    if mac_os:
+        images = sorted([(str(path_to_testset + "/" + f), str(f.split("_")[0])) for f in os.listdir(path_to_testset)])
+    else:
+        images = sorted([(str(path_to_testset + "\\" + f), str(f.split("_")[0])) for f in os.listdir(path_to_testset)])
 
+    images_test = pd.DataFrame(images, columns=["path", "class"])
+    #pred = []
+    pred_sum = 0
+    for index, image in images_test.iterrows():
+        img = decode_image(image["path"])
+        image_list = np.array([img] * len(images_db))
+        prediction = siamese_model.predict([image_list, database_list, database_list])
+        images_db["pred"] = prediction[0]
+        print("\n -----1------------------------- \n")
+        #pred_class = images_db.groupby("class").apply(lambda x: x['pred'].sum() / len(x))
+        pred_class_min = images_db.groupby("class").min()["pred"]
+        print("\n -----2------------------------- \n")
+        top1_min = pred_class_min.nsmallest(1)
+        print("\n -----3------------------------- \n")
+        if top1_min[0] <= threshold and top1_min.index[0] == image["class"]:
+            #pred.append([1])
+            pred_sum += 1
+            print("\n -----4------------------------- \n")
+        #else:
+            #pred.append([0])
 
+    accuracy = pred_sum/images_test["path"].count()
+    return accuracy
 
+##
+def evaluateTestsetContrastiveLoss(threshold, images_db, database_list, path_to_testset, mac_os, model):
+    if mac_os:
+        images = sorted([(str(path_to_testset + "/" + f), str(f.split("_")[0])) for f in os.listdir(path_to_testset)])
+    else:
+        images = sorted([(str(path_to_testset + "\\" + f), str(f.split("_")[0])) for f in os.listdir(path_to_testset)])
 
+    images_test = pd.DataFrame(images, columns=["path", "class"])
+    pred_sum = 0
+    for index, image in images_test.iterrows():
+        img = decode_image(image["path"])
+        image_list = np.array([img] * len(images_db))
+        prediction = model.predict([image_list, database_list])
+        images_db["pred"] = prediction
+        print("\n -----1------------------------- \n")
+        # pred_class = images_db.groupby("class").apply(lambda x: x['pred'].sum() / len(x))
+        pred_class_min = images_db.groupby("class").min()["pred"]
+        print("\n -----2------------------------- \n")
+        top1_min = pred_class_min.nsmallest(1)
+        print("\n -----3------------------------- \n")
+        if top1_min[0] <= threshold and top1_min.index[0] == image["class"]:
+            # pred.append([1])
+            pred_sum += 1
+            print("\n -----4------------------------- \n")
+        # else:
+        # pred.append([0])
 
-
-
-
-
-
-
-
+    accuracy = pred_sum / images_test["path"].count()
+    return accuracy
