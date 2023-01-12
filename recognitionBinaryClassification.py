@@ -175,7 +175,7 @@ def make_pairs(image_path, image_class, num=22, negative_path="/Users/tobias/Pyc
 
 ## generate tensorflow dataset
 utk_cropped_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\utkCropped\utkcropped"
-pairs = make_pairs(images_df["path"],images_df["class"], negative_path=utk_cropped_path)
+pairs = make_pairs(images_df["path"],images_df["class"], negative_path=utk_cropped_path, num_random_img=0)
 ##
 np.random.RandomState(seed=32).shuffle(pairs[0])
 np.random.RandomState(seed=32).shuffle(pairs[1])
@@ -207,7 +207,7 @@ model.summary()
 ##
 history = model.fit(ds_train, validation_data=ds_val, epochs=EPOCHS)
 ##
-model.save("saved_model/Milestone4/binaryClassification_15epochs_alpha1_onlyTrain_utk_pooling")
+model.save("saved_model/Milestone4/binaryClassification_15epochs_alpha1_onlyTrain_pooling")
 
 ## visualize one sample
 
