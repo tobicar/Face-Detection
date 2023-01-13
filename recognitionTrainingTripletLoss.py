@@ -5,8 +5,10 @@ import pandas as pd
 import numpy as np
 import tensorflow as tf
 import helper
-import matplotlib.pyplot as plt
+
+
 ##
+# functions for triplet loss model
 
 class DistanceLayer(tf.keras.layers.Layer):
     """
@@ -101,18 +103,6 @@ class SiameseModel(tf.keras.Model):
         metrics.append(triplet_accuracy)
         super(SiameseModel, self).compile(optimizer, loss, metrics, **kwargs)
 
-    def save(
-            self,
-            filepath,
-            overwrite=True,
-            include_optimizer=True,
-            save_format=None,
-            signatures=None,
-            options=None,
-            save_traces=True,
-    ):
-        super(SiameseModel, self).save(filepath)
-
     @property
     def metrics(self):
         # We need to list our metrics here so the `reset_states()` can be
@@ -120,38 +110,14 @@ class SiameseModel(tf.keras.Model):
         return [self.loss_tracker]
 
 
-def create_model(alpha=0.25, debug=False):
-    # TODO: train with global average pooling and with flatten layer
-    anchor_input = tf.keras.Input(name="anchor", shape=(224, 224, 3))
-    positive_input = tf.keras.Input(name="positive", shape=(224, 224, 3))
-    negative_input = tf.keras.Input(name="negative", shape=(224, 224, 3))
-    input = tf.keras.Input(shape=(224, 224, 3), name='input')
-    model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=alpha)
-    model_pretrained.trainable = False
-    feature_extractor = tf.keras.applications.mobilenet.preprocess_input(input)
-    feature_generator = model_pretrained(feature_extractor)
-    feature_generator = tf.keras.layers.GlobalAveragePooling2D()(feature_generator)
-    # feature_generator = tf.keras.layers.Flatten()(feature_generator)
-    feature_generator = tf.keras.layers.Dropout(0.2)(feature_generator)
-    feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
-    feature_generator = tf.keras.layers.Dense(128, activation='relu')(feature_generator)
-
-    feature_model = tf.keras.Model(input, feature_generator, name="feature_generator")
-    if debug:
-        feature_model.summary()
-
-    # distantf.keras.layers.concatenate([embedding_anchor, embedding_positive, embedding_negative], axis=1)
-    distances = DistanceLayer()(
-        feature_model(anchor_input),
-        feature_model(positive_input),
-        feature_model(negative_input),
-    )
-
-    siamese_net = tf.keras.Model(inputs=[anchor_input, positive_input, negative_input], outputs=distances)
-    return siamese_net
-
 @tf.function
 def triplet_loss(y_true, y_pred):
+    """
+    define triplet loss
+    :param y_true: real value (not used in triplet loss)
+    :param y_pred: predicted value
+    :return: loss
+    """
     margin = 1
     ap_distance = y_pred[:, 0, :]
     an_distance = y_pred[:, 1, :]
@@ -160,12 +126,14 @@ def triplet_loss(y_true, y_pred):
     return loss
 
 
-# def triplet_accuracy(y_true, y_pred):
-#    margin = 0
-#    pred = (ap_distance - an_distance - margin).cpu().data
-#    return (pred > 0).sum() * 1.0 / ap_distance.size()[0]
 @tf.function
 def triplet_accuracy(y_true, y_pred):
+    """
+    define accuracy for triplet loss (does not work)
+    :param y_true: real value (not used)
+    :param y_pred: predicted value
+    :return: accuracy
+    """
     # Calculate the distance between the anchor point and the positive point
     pos_dist = tf.reduce_sum(tf.square(y_pred[:, 0, :] - y_pred[:, 1, :]), axis=1)
     # Calculate the distance between the anchor point and the negative point
@@ -176,6 +144,11 @@ def triplet_accuracy(y_true, y_pred):
 
 
 def compile_model(model):
+    """
+    compile the given model with triplet attributes
+    :param model: model to compile
+    :return: compiled model
+    """
     model.compile(optimizer='adam', loss=triplet_loss, metrics=[triplet_accuracy])
     return model
 
@@ -183,6 +156,11 @@ def compile_model(model):
 # CREATE THE DATASET
 
 def decode_image(img_path):
+    """
+    decoding and preprocessing of image
+    :param img_path: path to image
+    :return: image in shape (244,244,3)
+    """
     image_size = (224, 224)
     num_channels = 3
     img = tf.io.read_file(img_path)
@@ -196,24 +174,49 @@ def decode_image(img_path):
 
 
 def preprocess_triplets(anchor, positive, negative):
+    """
+    generate triplets out of three inputs
+    :param anchor: anchor
+    :param positive: positive image
+    :param negative: negative image
+    :return: triplet / tuple with inputs
+    """
     return decode_image(anchor), decode_image(positive), decode_image(negative)
 
 
 def preprocess_triplets_array(filepath_anchor, filepath_positive, filepath_negative):
+    """
+    generate dictionary with paths to triplet components
+    :param filepath_anchor: path to anchor
+    :param filepath_positive: path to positive image
+    :param filepath_negative: path to negative image
+    :return: dictionary of paths
+    """
     return {"anchor": decode_image(filepath_anchor),
             "positive": decode_image(filepath_positive),
             "negative": decode_image(filepath_negative)}
 
-
-
-
 ##
-# train test split durchführen
-def make_triplets(image_paths, image_classes, num=5):
+
+
+def make_triplets_utk(image_paths, image_paths_utk, image_classes, num=5, probability_array=[True, False]):
+    """
+    generate triplets from images image_paths. Create (num+1)-count triplets for each image class
+    :param image_paths_utk: list of path to each image of utk
+    :param image_paths: list of path to each image
+    :param image_classes: list of image classes
+    :param num: count of triplets (num+1)
+    :param probability_array: probability of using utk image as negative. True = not use utk; False = use utk
+    :return: numpy array of triplets containing path to images
+    """
+    # extract all classes and indices of images in it
+    if probability_array is None:
+        probability_array = [True, False]
     num_classes = image_classes.unique().tolist()
     digit_indices = [(np.where(image_classes == image_class)[0], image_class) for image_class in num_classes]
-    triplets = []
 
+    triplets = []
+    # loop over each class
     for anchor_id in range(len(image_paths)):
         # find anchor
         anchor_path = image_paths[anchor_id]
@@ -221,179 +224,130 @@ def make_triplets(image_paths, image_classes, num=5):
         anchor_class_id = int(np.where(np.array(num_classes) == anchor_class)[0][0])
 
         # find matching example
+        # one time anchor self
         positive_id_list = [anchor_id]
-        positive_id_list.extend(random.choices(digit_indices[anchor_class_id][0], k=num))
-
-        # find non-matching example
-        negative_class_list = random.choices(num_classes, k=num + 1)
-        while anchor_class in negative_class_list:
-            negative_class_list = random.choices(num_classes, k=num + 1)
-
-        negative_id_list = []
-        for negative_class in negative_class_list:
-            negative_class_id = int(np.where(np.array(num_classes) == negative_class)[0][0])
-            negative_id_list.append(random.choice(digit_indices[negative_class_id][0]))
-
-        for i in range(len(positive_id_list)):
-            positive_path = image_paths[positive_id_list[i]]
-            negative_path = image_paths[negative_id_list[i]]
-            triplets += [[anchor_path, positive_path, negative_path]]
-
-            print(anchor_path)
-            print(positive_path)
-            print(negative_path + "\n")
-
-    return np.array(triplets)
-
-
-def make_triplets_utk(image_paths, image_paths_utk, image_classes, num=5):
-    num_classes = image_classes.unique().tolist()
-    digit_indices = [(np.where(image_classes == image_class)[0], image_class) for image_class in num_classes]
-    triplets = []
-
-    for anchor_id in range(len(image_paths)):
-        # find anchor
-        anchor_path = image_paths[anchor_id]
-        anchor_class = image_classes[anchor_id]
-        anchor_class_id = int(np.where(np.array(num_classes) == anchor_class)[0][0])
-
-        # find matching example
-        positive_id_list = [anchor_id]
+        # random images of class
         positive_id_list.extend(random.choices(digit_indices[anchor_class_id][0], k=num))
 
         # find non-matching example
         negative_path_list = []
         for i in range(num + 1):
-            if random.choice([True]):
+            # decide random if image from utk or not
+            if random.choice(probability_array):
+                # get random negative class
                 negative_class_id = int(random.choice(np.where(np.array(num_classes) == random.choice(num_classes))))
                 while anchor_class_id == negative_class_id:
                     negative_class_id = int(
                         random.choice(np.where(np.array(num_classes) == random.choice(num_classes))))
+                # get random image of random negative class
                 negative_id = random.choice(digit_indices[negative_class_id][0])
                 negative_path_list.append(image_paths[negative_id])
             else:
+                # get random image of utk
                 negative_path_list.append(random.choice(image_paths_utk))
 
+        # create triplet
         for i in range(len(positive_id_list)):
-            print(anchor_path)
             positive_path = image_paths[positive_id_list[i]]
-            print(positive_path)
             negative_path = negative_path_list[i]
-            print(negative_path + "\n")
             triplets += [[anchor_path, positive_path, negative_path]]
 
     return np.array(triplets)
 
 
+@tf.function
+def normalize(x):
+    """
+    define L2 regularisation
+    """
+    return tf.math.l2_normalize(x, axis=-1)
+
+
+def create_model():
+    """
+    create model for triplet loss using mobilenet as base model
+    :return: model
+    """
+    anchor_input = tf.keras.Input(name="anchor", shape=(224, 224, 3))
+    positive_input = tf.keras.Input(name="positive", shape=(224, 224, 3))
+    negative_input = tf.keras.Input(name="negative", shape=(224, 224, 3))
+    input = tf.keras.Input(shape=(224, 224, 3), name='input')
+    model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=1)
+    model_pretrained.trainable = False
+    feature_extractor = tf.keras.applications.mobilenet.preprocess_input(input)
+    feature_generator = model_pretrained(feature_extractor)
+    feature_generator = tf.keras.layers.GlobalAveragePooling2D()(feature_generator)
+    # feature_generator = tf.keras.layers.Flatten()(feature_generator)
+    feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+    feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
+    feature_generator = tf.keras.layers.Dense(256, activation='relu')(feature_generator)
+    feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
+    feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
+    feature_generator = tf.keras.layers.Dense(128, activation='relu')(feature_generator)
+    feature_generator = tf.keras.layers.Lambda(normalize)(feature_generator)
+
+    feature_model = tf.keras.Model(input, feature_generator, name="feature_generator")
+
+    # distantf.keras.layers.concatenate([embedding_anchor, embedding_positive, embedding_negative], axis=1)
+    distances = DistanceLayer()(
+        feature_model(anchor_input),
+        feature_model(positive_input),
+        feature_model(negative_input),
+    )
+
+    return tf.keras.Model(inputs=[anchor_input, positive_input, negative_input], outputs=distances)
+
+
 ##
+# generate tensorflow dataset
 
-image_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\train"
-#image_path = r"C:\Users\svea\PycharmProjects\Face-Detection\images\rawdata4"
-
+# path to images
+image_path = r"C:\Users\svea\PycharmProjects\Face-Detection\images\milestone4\train"
 #MAC OS
 #image_path = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/archive/Faces/Faces"
-# images = sorted([str(image_path +  "/" +  f) for f in os.listdir(image_path)])
 
 images = sorted([(str(image_path + "\\" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
 #MAC OS
 #images = sorted([(str(image_path + "/" + f), str(f.split("_")[0])) for f in os.listdir(image_path)])
 
 images_df = pd.DataFrame(images, columns=["path", "class"])
-
-len(images_df.groupby("class").count())
-# generate tensorflow dataset
 directory_path = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\utkCropped\utkcropped\utkcropped"
-#subfiles = [directory_path + "\\" + f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
-#MAC OS
-#directory_path = r"/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/utkcropped"
 subfiles = [directory_path + "/" + f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
 
-
+# generate triplets
 triplets = make_triplets_utk(images_df["path"], subfiles, images_df["class"], num=30)
 
-## online strategy
-
+##
+# split train and validation data using online strategy
 np.random.seed(123)
 np.random.shuffle(triplets)
 train = triplets[0:int(len(triplets) * 0.75)]
 val = triplets[int(len(triplets) * 0.75):]
 
+# creating batched dataset for train
 data_train = tf.data.Dataset.from_tensor_slices((train[:, 0], train[:, 1], train[:, 2]))
 ds_train = data_train.map(preprocess_triplets_array)
 ds_train = ds_train.batch(32)
-
+# creating batched dataset for validation
 data_val = tf.data.Dataset.from_tensor_slices((val[:, 0], val[:, 1], val[:, 2]))
 ds_val = data_val.map(preprocess_triplets_array)
 ds_val = ds_val.batch(32)
 
 ##
-#EPOCHS = 10
-#model = create_model()
-
-@tf.function
-def normalize(x):
-    return tf.math.l2_normalize(x, axis=-1)
-
-
-# ----- create the model -------
-anchor_input = tf.keras.Input(name="anchor", shape=(224, 224, 3))
-positive_input = tf.keras.Input(name="positive", shape=(224, 224, 3))
-negative_input = tf.keras.Input(name="negative", shape=(224, 224, 3))
-input = tf.keras.Input(shape=(224, 224, 3), name='input')
-model_pretrained = helper.load_model_for_training("v1", 1000, pre_trained=True, alpha=1)
-model_pretrained.trainable = False
-feature_extractor = tf.keras.applications.mobilenet.preprocess_input(input)
-feature_generator = model_pretrained(feature_extractor)
-feature_generator = tf.keras.layers.GlobalAveragePooling2D()(feature_generator)
-# feature_generator = tf.keras.layers.Flatten()(feature_generator)
-feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
-feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
-feature_generator = tf.keras.layers.Dense(256, activation='relu')(feature_generator)
-feature_generator = tf.keras.layers.BatchNormalization()(feature_generator)
-feature_generator = tf.keras.layers.Dropout(0.4)(feature_generator)
-feature_generator = tf.keras.layers.Dense(128, activation='relu')(feature_generator)
-feature_generator = tf.keras.layers.Lambda(normalize)(feature_generator)
-
-feature_model = tf.keras.Model(input, feature_generator, name="feature_generator")
-
-# distantf.keras.layers.concatenate([embedding_anchor, embedding_positive, embedding_negative], axis=1)
-distances = DistanceLayer()(
-    feature_model(anchor_input),
-    feature_model(positive_input),
-    feature_model(negative_input),
-)
-
-siamese_net = tf.keras.Model(inputs=[anchor_input, positive_input, negative_input], outputs=distances)
-# ---- end of creation of the model -----
+# create model
+siamese_net = create_model()
+# reform it to siamese model
 siamese_model = SiameseModel(siamese_net)
 siamese_model.compile(optimizer='adam', loss=triplet_loss, metrics=["accuracy", "precision", triplet_accuracy])
-# = compile_model(siamese_model)
+
 ##
+# train model
 history = siamese_model.fit(ds_train, epochs=15, validation_data=ds_val)
-## save weights
+##
+# save weights
 siamese_model.save_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain/siamese_net")
 
-## load weights
-# model vorher erstellen
-#siamese_model = SiameseModel(model)
-#siamese_model.compile(optimizer='adam', loss=triplet_loss, metrics=["accuracy", "precision", triplet_accuracy])
-load_status = siamese_model.load_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain_utk/siamese_net")
-# siamese_model.save("saved_model/Milestone4/tripletLoss_10epochs_alpha025")
 ##
-tf.saved_model.save(siamese_model, "saved_model/Milestone4/tripletLoss_10epochs_alpha025")
-
-## visualize one sample
-
-def visualize(number_of_sample, anchor, positive, negative):
-    """Visualize one triplet from the supplied batch."""
-
-    def show(ax, image):
-        ax.imshow(image)
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-
-    fig = plt.figure(figsize=(3, 1))
-    axs = fig.subplots(3, 1)
-    show(axs[0], tf.keras.preprocessing.image.array_to_img(anchor[number_of_sample]))
-    show(axs[1], tf.keras.preprocessing.image.array_to_img(positive[number_of_sample]))
-    show(axs[2], tf.keras.preprocessing.image.array_to_img(negative[number_of_sample]))
+# load weights
+# have to create model before
+load_status = siamese_model.load_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain_utk/siamese_net")
