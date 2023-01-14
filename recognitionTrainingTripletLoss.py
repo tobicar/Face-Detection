@@ -57,3 +57,18 @@ siamese_model.save_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_w
 # load weights
 # have to create model before
 load_status = siamese_model.load_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain_utk/siamese_net")
+## visualize one sample
+
+def visualize(number_of_sample, anchor, positive, negative):
+    """Visualize one triplet from the supplied batch."""
+
+    def show(ax, image):
+        ax.imshow(image)
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+
+    fig = plt.figure(figsize=(3, 1))
+    axs = fig.subplots(3, 1)
+    show(axs[0], tf.keras.preprocessing.image.array_to_img(anchor[number_of_sample]))
+    show(axs[1], tf.keras.preprocessing.image.array_to_img(positive[number_of_sample]))
+    show(axs[2], tf.keras.preprocessing.image.array_to_img(negative[number_of_sample]))
