@@ -184,13 +184,46 @@ included first and second classes from second milestone
 
 # Fourth Milestone:
 
-goal --> Recognition of face
+goal --> Recognition of person based on face images
 
-used datasets:
-https://www.kaggle.com/datasets/stoicstatic/face-recognition-dataset?resource=download
-https://www.kaggle.com/code/kerimelebiler/face-recognition-with-cnn/data
+- using siamese model
+- variants of loss:
+  - contrastive loss
+  - triplet loss
 
+## Data preprocessing:
 
-new files:
-recognitionTrainingTripletLoss.py
-recognitionBinaryClassification.py
+1. resize images to size(244, 244, 3)
+2. generate pairs / triplets
+   - contrastive loss: pairs
+   - triplet loss: triplets
+
+## Selection of the database:
+
+1. class (cropped face images grouped by person):
+  - dataset: [face recognition with cnn (cropped)](https://www.kaggle.com/code/kerimelebiler/face-recognition-with-cnn/data)
+2. class (random cropped face images (not containing person from 1. class))
+  - dataset: [UTK Face Cropped](https://www.kaggle.com/datasets/abhikjha/utk-face-cropped)
+
+## Issues:
+
+## Structure of the project:
+
+### python files:
+
+- initialTestData.py
+- helper_tripletloss.py
+- helper_contrastiveloss.py
+- recognitionTrainingTripletLoss.py
+- recognitionBinaryClassification.py
+- evaluateMilestone4.py
+
+### directories:
+
+- [evaluation/Milestone4](evaluation/Milestone4)
+  - contains json files with evaluated models on the test dataset
+- [images](images/milestone4)
+  - contains the train and test images
+- [saved_model](saved_model/Milestone4)
+  - contains all trained models, that can be loaded
+  - triplet loss: only saved weights (to load create triplet loss model before)
