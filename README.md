@@ -207,16 +207,36 @@ goal --> Recognition of person based on face images
 
 ## Issues:
 
+- all images of first class are cropped the same way, some images of second class are cropped different
+
 ## Structure of the project:
 
 ### python files:
 
-- initialTestData.py
-- helper_tripletloss.py
-- helper_contrastiveloss.py
-- recognitionTrainingTripletLoss.py
-- recognitionBinaryClassification.py
-- evaluateMilestone4.py
+- [initialTestData.py](initialTestData.py):
+  - splits the raw data from the folder [rawdata](images/rawdata4) into a training- and testset
+  - 15 % of the pictures are randomly saved in the [test](images/milestone4/test) and 85 % in the [train](images/milestone4/train)
+- [helper_tripletloss.py](helper_tripletloss.py):
+  - file with functions for triplet loss:
+    - loading and saving models
+    - import train images
+    - generate triplets
+    - compile and train models
+- [helper_contrastiveloss.py](helper_contrastiveloss.py):
+  - file with functions for contrastive loss:
+    - loading and saving models
+    - import train images
+    - generate triplets
+    - compile and train models
+- [recognitionTrainingTripletLoss.py](recognitionTrainingTripletLoss.py):
+  - file for automatically train models
+  - the trained models are saved to the directory [saved_model](saved_model)
+- [recognitionBinaryClassification.py](recognitionBinaryClassification.py):
+  - file for automatically train models
+  - the trained models are saved to the directory [saved_model](saved_model)
+- [evaluationMilestone4.py](evaluationMilestone4.py):
+  - file for automatically evaluation of all saved models
+
 
 ### directories:
 
