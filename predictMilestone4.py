@@ -6,8 +6,11 @@ import matplotlib.pyplot as plt
 import os
 
 import helper_tripletloss
+import helper_contrastiveloss
 
 import json
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 ##
 # load model triplet loss
@@ -21,27 +24,29 @@ siamese_model.compile(optimizer='adam',
                                "precision",
                                helper_tripletloss.triplet_accuracy])
 # load weights
-load_status = siamese_model.load_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain_utk/siamese_net")
+load_status = siamese_model.load_weights(
+    "saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain_utk/siamese_net")
 
 ##
 # load model contrastive loss
+model = tf.keras.models.load_model("saved_model/Milestone4/binaryClassification_15epochs_alpha1_onlyTrain_utk_pooling",
+                                   custom_objects={"contrastive_loss": helper_contrastiveloss.contrastive_loss})
 
-
-##
-def contrastive_loss(y_true, y_pred, margin=1):
-    y_true = tf.cast(y_true, y_pred.dtype)
-    square_pred = tf.math.square(y_pred)
-    margin_square = tf.math.square(tf.math.maximum(margin - y_pred, 0))
-    return tf.keras.backend.mean((1 - y_true) * square_pred + y_true * margin_square)
 
 ## generate database with n random picks from each person
 def generate_database(file_path, number_of_samples=4):
+    """
+
+    :param file_path:
+    :param number_of_samples:
+    :return:
+    """
     images = sorted([(str(file_path + "/" + f), str(f.split("_")[0])) for f in os.listdir(file_path)])
     images_df = pd.DataFrame(images, columns=["path", "class"])
     images_df = images_df[images_df["class"] != ".DS"]
 
     database = []
-    for label,grouped_subframe in images_df.groupby("class"):
+    for label, grouped_subframe in images_df.groupby("class"):
         random_rows = grouped_subframe.sample(number_of_samples, random_state=42)
         database.append(random_rows)
 
@@ -49,16 +54,14 @@ def generate_database(file_path, number_of_samples=4):
     database_list = [helper_tripletloss.decode_image(f) for f in database_frame["path"]]
     database_list = np.array(database_list)
     return database_frame, database_list
-##
-PATH_TO_DATABASE = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/database"
-#PATH_TO_MODEL = "saved_model/Milestone4/binaryClassification_10epochs_alpha1"
-#PATH_TO_MODEL2 = "saved_model/Milestone4/binaryClassification_20epochs_alpha1_flatten"
-PATH_TO_MODEL_TRIPLET = "saved_model/Milestone4/tripletLoss_new"
+
 
 ## take human generated database
-images = sorted([(str(PATH_TO_DATABASE +  "/" +  f), str(f.split("_")[0])) for f in os.listdir(PATH_TO_DATABASE)])
+PATH_TO_DATABASE = "/Users/tobias/PycharmProjects/Face-Detection/images/rawdata4/database"
 
-images_db = pd.DataFrame(images,columns=["path","class"])
+images = sorted([(str(PATH_TO_DATABASE + "/" + f), str(f.split("_")[0])) for f in os.listdir(PATH_TO_DATABASE)])
+
+images_db = pd.DataFrame(images, columns=["path", "class"])
 
 images_db = images_db[images_db["class"] != ".DS"]
 
@@ -67,68 +70,81 @@ len(images_db.groupby("class").count())
 database_list = [helper_tripletloss.decode_image(f) for f in images_db["path"]]
 database_list = np.array(database_list)
 
-
 ## random generated database
-#images_db, database_list = generate_database("/Users/tobias/PycharmProjects/Face-Detection/images/milestone4/train", 5)
-images_db, database_list = generate_database("C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\milestone4\\train", 5)
+# images_db, database_list = generate_database("/Users/tobias/PycharmProjects/Face-Detection/images/milestone4/train", 5)
+images_db, database_list = generate_database(
+    "C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\milestone4\\train", 5)
+
 ## choose image to predict
-#IMG_TO_PREDICT_PATH = "/Users/tobias/Downloads/anushka.jpg"
-#IMG_TO_PREDICT_PATH = r"C:\Users\Svea Worms\Downloads\predictions\mensch1.jpg"
+# IMG_TO_PREDICT_PATH = "/Users/tobias/Downloads/anushka.jpg"
+# IMG_TO_PREDICT_PATH = r"C:\Users\Svea Worms\Downloads\predictions\mensch1.jpg"
 IMG_TO_PREDICT_PATH = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\test\Anushka Sharma_26.jpg"
 name = "Anushka Sharma"
-img = helper_tripletloss.decode_image(IMG_TO_PREDICT_PATH)
-image_list = np.array([img]*len(images_db))
-image_list_1 = image_list[0:int(len(image_list)*0.5)]
-image_list_2 = image_list[int(len(image_list)*0.5):]
-##
-database_list_1 = database_list[0:int(len(database_list)*0.5)]
-database_list_2 = database_list[int(len(database_list)*0.5):]
 
-TRIPLET_LOSS_MODEL = True
-if TRIPLET_LOSS_MODEL:
-    prediction_1 = siamese_model.predict([image_list_1, database_list_1, database_list_1])
-    prediction_2 = siamese_model.predict([image_list_2, database_list_2, database_list_2])
-    prediction = np.append(prediction_1[0], prediction_2[0])
-    images_db["pred"] = prediction
-else:
-    prediction = model2.predict([image_list, database_list])
-    images_db["pred"] = prediction
-pred_class = images_db.groupby("class").apply(lambda x: x['pred'].sum()/len(x))
-pred_class_min = images_db.groupby("class").min()["pred"]
-top4_min = pred_class_min.nsmallest(3)
-top4 = pred_class.nsmallest(3)
 
-fig, ax = plt.subplots(figsize=(10,5))
-ax.imshow(tf.keras.preprocessing.image.array_to_img(img))
-textstr = '\n'.join((
-                '1. %s: %.2f' % (top4_min.index[0], top4_min[0]),
-                '2. %s: %.2f' % (top4_min.index[1], top4_min[1]),
-                '3. %s: %.2f' % (top4_min.index[2], top4_min[2]),
-                '\n real: %s' % (name)
-                #'1. \n mean: %s: %.2f \n min:  %s: %.2f' % (top4.index[0], top4[0], top4_min.index[0], top4_min[0]),
-                #'2. \n mean: %s: %.2f \n min: %s: %.2f' % (top4.index[1], top4[1], top4_min.index[1], top4_min[1]),
-                #'3. \n mean: %s: %.2f \n min: %s: %.2f' % (top4.index[2], top4[2], top4_min.index[2], top4_min[2])
-))
-props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-ax.text(240, 112, textstr, fontsize=14, bbox=props, verticalalignment="center")
-plt.show()
+def pred_image(name, image_path, images_db, database_list, use_triplet_loss=True):
+    """
+    predict one image with all images in database and plots top three suitable prediction
+    :param use_triplet_loss: bool to choose model version: True -> triplet loss; False -> contrastive loss
+    :param name: person name
+    :param image_path: path to image
+    :param images_db: dataset containing all images and classes of database as string
+    :param database_list: dataset containing all images of database decoded as numpy array
+    :return: -
+    """
+    img = helper_tripletloss.decode_image(image_path)
+    image_list = np.array([img] * len(images_db))
+    image_list_1 = image_list[0:int(len(image_list) * 0.5)]
+    image_list_2 = image_list[int(len(image_list) * 0.5):]
 
+    database_list_1 = database_list[0:int(len(database_list) * 0.5)]
+    database_list_2 = database_list[int(len(database_list) * 0.5):]
+
+    if use_triplet_loss:
+        prediction_1 = siamese_model.predict([image_list_1, database_list_1, database_list_1])
+        prediction_2 = siamese_model.predict([image_list_2, database_list_2, database_list_2])
+        prediction = np.append(prediction_1[0], prediction_2[0])
+        images_db["pred"] = prediction
+    else:
+        prediction = model.predict([image_list, database_list])
+        images_db["pred"] = prediction
+    pred_class = images_db.groupby("class").apply(lambda x: x['pred'].sum() / len(x))
+    pred_class_min = images_db.groupby("class").min()["pred"]
+    top4_min = pred_class_min.nsmallest(3)
+    top4 = pred_class.nsmallest(3)
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.imshow(tf.keras.preprocessing.image.array_to_img(img))
+    textstr = '\n'.join((
+        '1. %s: %.2f' % (top4_min.index[0], top4_min[0]),
+        '2. %s: %.2f' % (top4_min.index[1], top4_min[1]),
+        '3. %s: %.2f' % (top4_min.index[2], top4_min[2]),
+        '\n real: %s' % (name)
+        # '1. \n mean: %s: %.2f \n min:  %s: %.2f' % (top4.index[0], top4[0], top4_min.index[0], top4_min[0]),
+        # '2. \n mean: %s: %.2f \n min: %s: %.2f' % (top4.index[1], top4[1], top4_min.index[1], top4_min[1]),
+        # '3. \n mean: %s: %.2f \n min: %s: %.2f' % (top4.index[2], top4[2], top4_min.index[2], top4_min[2])
+    ))
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    ax.text(240, 112, textstr, fontsize=14, bbox=props, verticalalignment="center")
+    plt.show()
 
 
 ## predict two images
-#IMAGE_PATH_1 = "/Users/tobias/Downloads/zac.jpg"
-#IMAGE_PATH_2 = "/Users/tobias/Downloads/zac.jpg"
+# IMAGE_PATH_1 = "/Users/tobias/Downloads/zac.jpg"
+# IMAGE_PATH_2 = "/Users/tobias/Downloads/zac.jpg"
 IMAGE_PATH_1 = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\test\Akshay Kumar_8.jpg"
 IMAGE_PATH_2 = r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\train\Alexandra Daddario_0.jpg"
-#IMAGE_PATH_3 = "/Users/tobias/Downloads/Bild.jpeg"
+# IMAGE_PATH_3 = "/Users/tobias/Downloads/Bild.jpeg"
 img1 = helper_tripletloss.decode_image(IMAGE_PATH_1)
 img1 = tf.expand_dims(img1, axis=0)
 img2 = helper_tripletloss.decode_image(IMAGE_PATH_2)
 img2 = tf.expand_dims(img2, axis=0)
-#img3 = decode_image(IMAGE_PATH_3)
-#img3 = tf.expand_dims(img3, axis=0)
+# img3 = decode_image(IMAGE_PATH_3)
+# img3 = tf.expand_dims(img3, axis=0)
 prediction = model.predict([img1, img2])
 print(prediction)
+
+
 ##
 def evaluateTestsetTripletLoss(threshold, images_db, database_list, path_to_testset, mac_os, siamese_model):
     if mac_os:
@@ -152,8 +168,9 @@ def evaluateTestsetTripletLoss(threshold, images_db, database_list, path_to_test
         elif top1_min[0] > threshold and len(image["class"]) <= 3:
             pred_sum += 1
 
-    accuracy = pred_sum/images_test["path"].count()
+    accuracy = pred_sum / images_test["path"].count()
     return accuracy
+
 
 ##
 def evaluateTestsetContrastiveLoss(threshold, images_db, database_list, path_to_testset, mac_os, model):
@@ -182,47 +199,58 @@ def evaluateTestsetContrastiveLoss(threshold, images_db, database_list, path_to_
     accuracy = pred_sum / images_test["path"].count()
     return accuracy
 
+
 ##
 PATH_TO_TESTSET = "images/milestone4/test"
-load_status = siamese_model.load_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain_utk/siamese_net")
-predictions_triplet_utk = []
-for t in [0.2, 0.4, 0.6]:
-    #pred = evaluateTestsetContrastiveLoss(t, images_db, database_list, r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\test", False, model)
-    pred = evaluateTestsetTripletLoss(t, images_db, database_list, PATH_TO_TESTSET, True, siamese_model)
-    predictions_triplet_utk.append([t, pred])
-
-with open('evaluation/Milestone4/prediction_triplet_utk.json', 'w') as file:
-    # write the list to the file in json format
-    json.dump(predictions_triplet_utk, file)
-
-load_status = siamese_model.load_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain/siamese_net")
+load_status = siamese_model.load_weights(
+    "saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain/siamese_net")
 predictions_triplet = []
-for t in [0.2, 0.4, 0.6]:
-    #pred = evaluateTestsetContrastiveLoss(t, images_db, database_list, r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\test", False, model)
-    pred = evaluateTestsetTripletLoss(t, images_db, database_list, PATH_TO_TESTSET, True, siamese_model)
+for t in [1, 3, 5,8]:
+    images_db, database_list = generate_database(
+        "C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\milestone4\\train", t)
+    # pred = evaluateTestsetContrastiveLoss(t, images_db, database_list, r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\test", False, model)
+    pred = evaluateTestsetTripletLoss(0.2, images_db, database_list, PATH_TO_TESTSET, True, siamese_model)
     predictions_triplet.append([t, pred])
-with open('evaluation/Milestone4/prediction_triplet.json', 'w') as file:
+with open('evaluation/Milestone4/prediction_databasesize_triplet.json', 'w') as file:
     # write the list to the file in json format
     json.dump(predictions_triplet, file)
 
+PATH_TO_TESTSET = "images/milestone4/test"
+load_status = siamese_model.load_weights(
+    "saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain_utk/siamese_net")
+predictions_triplet_utk = []
+for t in [1, 3, 5,8]:
+    images_db, database_list = generate_database(
+        "C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\milestone4\\train", t)
+    # pred = evaluateTestsetContrastiveLoss(t, images_db, database_list, r"C:\Users\Svea Worms\PycharmProjects\Face-Detection\images\milestone4\test", False, model)
+    pred = evaluateTestsetTripletLoss(0.6, images_db, database_list, PATH_TO_TESTSET, True, siamese_model)
+    predictions_triplet_utk.append([t, pred])
+
+with open('evaluation/Milestone4/prediction_databasesize_triplet_utk.json', 'w') as file:
+    # write the list to the file in json format
+    json.dump(predictions_triplet_utk, file)
+##
 PATH_TO_MODEL2 = "saved_model/Milestone4/binaryClassification_15epochs_alpha1_onlyTrain_utk_pooling"
-model2 = tf.keras.models.load_model(PATH_TO_MODEL2, custom_objects={"contrastive_loss": contrastive_loss})
+model2 = tf.keras.models.load_model(PATH_TO_MODEL2, custom_objects={"contrastive_loss": helper_contrastiveloss.contrastive_loss})
 prediction_contrastive_utk = []
-for t in [0.2, 0.4, 0.6]:
-    pred = evaluateTestsetContrastiveLoss(t, images_db, database_list, PATH_TO_TESTSET, True, model2)
+for t in [1, 3, 5,8]:
+    images_db, database_list = generate_database(
+        "C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\milestone4\\train", t)
+    pred = evaluateTestsetContrastiveLoss(0.2, images_db, database_list, PATH_TO_TESTSET, True, model2)
     prediction_contrastive_utk.append([t, pred])
-with open('evaluation/Milestone4/prediction_contrastive_utk.json', 'w') as file:
+with open('evaluation/Milestone4/prediction_databasesize_contrastive_utk.json', 'w') as file:
     # write the list to the file in json format
     json.dump(prediction_contrastive_utk, file)
-
+##
 PATH_TO_MODEL2 = "saved_model/Milestone4/binaryClassification_15epochs_alpha1_onlyTrain_pooling"
-model2 = tf.keras.models.load_model(PATH_TO_MODEL2, custom_objects={"contrastive_loss": contrastive_loss})
+model2 = tf.keras.models.load_model(PATH_TO_MODEL2, custom_objects={"contrastive_loss": helper_contrastiveloss.contrastive_loss})
 prediction_contrastive = []
-for t in [0.2, 0.4, 0.6]:
-    pred = evaluateTestsetContrastiveLoss(t, images_db, database_list, PATH_TO_TESTSET, True, model2)
+for t in [1,3,5,8]:
+    images_db, database_list = generate_database(
+        "C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\milestone4\\train", t)
+    pred = evaluateTestsetContrastiveLoss(0.2, images_db, database_list, PATH_TO_TESTSET, True, model2)
     prediction_contrastive.append([t, pred])
 
 with open('evaluation/Milestone4/prediction_contrastive.json', 'w') as file:
     # write the list to the file in json format
     json.dump(prediction_contrastive, file)
-
