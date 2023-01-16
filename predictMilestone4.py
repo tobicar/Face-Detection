@@ -4,10 +4,8 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
 import helper_tripletloss
 import helper_contrastiveloss
-
 import json
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -162,6 +160,7 @@ def evaluateTestset(threshold, images_db, database_list, path_to_testset, mac_os
 
     images_test = pd.DataFrame(images, columns=["path", "class"])
     pred_sum = 0
+    count = 0
     for index, image in images_test.iterrows():
         # preprocessing image
         img = helper_tripletloss.decode_image(image["path"])
@@ -169,9 +168,10 @@ def evaluateTestset(threshold, images_db, database_list, path_to_testset, mac_os
         # generate prediction
         if use_triplet_loss:
             prediction = model.predict([image_list, database_list, database_list])
+            images_db["pred"] = prediction[0]
         else:
             prediction = model.predict([image_list, database_list])
-        images_db["pred"] = prediction[0]
+            images_db["pred"] = prediction
         # get best fitting
         pred_class_min = images_db.groupby("class").min()["pred"]
         top1_min = pred_class_min.nsmallest(1)
@@ -181,6 +181,8 @@ def evaluateTestset(threshold, images_db, database_list, path_to_testset, mac_os
         # image from utk (person not in database)
         elif top1_min[0] > threshold and len(image["class"]) <= 3:
             pred_sum += 1
+        count += 1
+        print(str(count) + " of " + str(images_test["path"].count()))
     # calculate accuracy
     accuracy = pred_sum / images_test["path"].count()
     return accuracy
@@ -191,7 +193,7 @@ def evaluateTestset(threshold, images_db, database_list, path_to_testset, mac_os
 PATH_TO_TESTSET = "images/milestone4/test"
 load_status = siamese_model.load_weights("saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain/siamese_net")
 predictions_triplet = []
-for t in [1, 3, 5, 8]:
+for t in [8]:
     images_db, database_list = generate_database(
         "C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\milestone4\\train", t)
     pred = evaluateTestset(0.2, images_db, database_list, PATH_TO_TESTSET, True, True, siamese_model)
@@ -200,12 +202,11 @@ with open('evaluation/Milestone4/prediction_databasesize_triplet.json', 'w') as 
     # write the list to the file in json format
     json.dump(predictions_triplet, file)
 
-##
 PATH_TO_TESTSET = "images/milestone4/test"
 load_status = siamese_model.load_weights(
     "saved_model/Milestone4/tripletLoss_15epochs_alpha1_weights_onlyTrain_utk/siamese_net")
 predictions_triplet_utk = []
-for t in [1, 3, 5, 8]:
+for t in [8]:
     images_db, database_list = generate_database(
         "C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\milestone4\\train", t)
     pred = evaluateTestset(0.6, images_db, database_list, PATH_TO_TESTSET, True, True, siamese_model)
@@ -220,7 +221,7 @@ PATH_TO_MODEL2 = "saved_model/Milestone4/binaryClassification_15epochs_alpha1_on
 model2 = tf.keras.models.load_model(PATH_TO_MODEL2,
                                     custom_objects={"contrastive_loss": helper_contrastiveloss.contrastive_loss})
 prediction_contrastive_utk = []
-for t in [3, 5, 8]:
+for t in [8]:
     images_db, database_list = generate_database(
         "C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\milestone4\\train", t)
     pred = evaluateTestset(0.2, images_db, database_list, PATH_TO_TESTSET, True, False, model2)
@@ -234,7 +235,7 @@ PATH_TO_MODEL2 = "saved_model/Milestone4/binaryClassification_15epochs_alpha1_on
 model2 = tf.keras.models.load_model(PATH_TO_MODEL2,
                                     custom_objects={"contrastive_loss": helper_contrastiveloss.contrastive_loss})
 prediction_contrastive = []
-for t in [1, 3, 5, 8]:
+for t in [1, 3, 8]:
     images_db, database_list = generate_database(
         "C:\\Users\\Svea Worms\\PycharmProjects\\Face-Detection\\images\\milestone4\\train", t)
     pred = evaluateTestset(0.2, images_db, database_list, PATH_TO_TESTSET, True, False, model2)
